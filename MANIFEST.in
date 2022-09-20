@@ -7,6 +7,7 @@ include tox.ini
 
 recursive-include src *.py
 include buildout4.cfg
+recursive-include src .gitkeep
 recursive-include src *.dtml
 recursive-include src *.gif
 recursive-include src *.dtml
