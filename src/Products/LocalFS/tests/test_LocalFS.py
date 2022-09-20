@@ -37,25 +37,53 @@
 #      (http://www.zope.org/)."
 #
 ##############################################################################
-import os
+# Tests for the LocalFS class
 
-from App.ImageFile import ImageFile
+import unittest
 
-from . import LocalFS
-
-
-misc_ = {}
-www_files = os.listdir(os.path.join(os.path.dirname(__file__), 'www'))
-icons = [f for f in www_files if f[-4:] == '.gif']
-
-for icon in icons:
-    misc_[icon] = ImageFile('www/%s' % icon, globals())
+from ..LocalFS import _iswin32
+from .helpers import LOCALFS_ROOT
 
 
-def initialize(context):
-    context.registerClass(
-        LocalFS.LocalFS,
-        constructors=(LocalFS.manage_addLocalFSForm,
-                      LocalFS.manage_addLocalFS),
-        icon='www/fs.gif',
-        )
+class LocalFSTests(unittest.TestCase):
+
+    def _getTargetClass(self):
+        from ..LocalFS import LocalFS
+
+        return LocalFS
+
+    def _makeOne(self, *args):
+        return self._getTargetClass()(*args)
+
+    def _makeSimple(self):
+        klass = self._getTargetClass()
+        return klass('localfs', 'LocalFS Title', LOCALFS_ROOT, 'user', 'pw')
+
+    def test_instantiation(self):
+        lfs = self._makeSimple()
+        self.assertEqual(lfs.getId(), 'localfs')
+        self.assertEqual(lfs.title, 'LocalFS Title')
+        self.assertEqual(lfs.basepath, LOCALFS_ROOT)
+
+        # Only on Windows
+        if _iswin32:
+            self.assertEqual(lfs.username, 'user')
+            self.assertEqual(lfs._password, 'pw')
+
+    def test_factory(self):
+        from OFS.Folder import Folder
+
+        from ..LocalFS import manage_addLocalFS
+
+        folder = Folder('test')
+
+        manage_addLocalFS(folder, 'lfs', 'Local FS', LOCALFS_ROOT)
+
+        self.assertEqual(folder.lfs.getId(), 'lfs')
+        self.assertEqual(folder.lfs.title, 'Local FS')
+        self.assertEqual(folder.lfs.basepath, LOCALFS_ROOT)
+
+        # Only on Windows
+        if _iswin32:
+            self.assertEqual(folder.lfs.username, None)
+            self.assertEqual(folder.lfs._password, None)

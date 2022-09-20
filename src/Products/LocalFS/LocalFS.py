@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 1999 Jonothan Farr
+# Copyright (c) 1999 Jonothan Farr and contributors
 # All rights reserved. Written by Jonothan Farr <jfarr@speakeasy.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,10 +47,10 @@ import marshal  # sbk
 import os
 import re
 import stat
-import string
 import sys
-import urllib
-from types import StringType
+
+import six
+from six.moves.urllib.parse import quote
 
 import AccessControl
 import Acquisition
@@ -65,9 +65,6 @@ from DateTime import DateTime
 from OFS.CopySupport import CopyError
 from OFS.CopySupport import _cb_decode
 from OFS.CopySupport import _cb_encode
-from OFS.CopySupport import eInvalid
-from OFS.CopySupport import eNoData
-from OFS.CopySupport import eNotFound
 from OFS.Image import Pdata
 from OFS.role import RoleManager
 from Products.PageTemplates.ZopePageTemplate import ZopePageTemplate
@@ -143,7 +140,7 @@ def _set_content_type(ob, content_type, data):
     if hasattr(ob, 'content_type') and ob.content_type == 'text/html':
         if content_type == 'text/html':
             return
-        data = string.lower(string.strip(data))
+        data = data.strip().lower()
         if data[:6] != '<html>' and data[:14] != '<!doctype html':
             ob.content_type = 'text/plain'
 
@@ -182,7 +179,7 @@ def _list2typemap(types_list):
     for i in types_list:
         if i:
             try:
-                e, t = string.split(i)
+                e, t = i.split()
                 c = ''
             except ValueError:
                 try:
@@ -196,14 +193,13 @@ def _list2typemap(types_list):
 def _typemap2list(types_mapping):
     """_typemap2list"""
     res = []
-    keys = types_mapping.keys()
-    keys.sort()
+    keys = sorted(types_mapping.keys())
     for k in keys:
         v = types_mapping[k]
         if isinstance(v, tuple):
-            res.append(string.join((k, v[0], v[1])))
+            res.append(''.join((k, v[0], v[1])))
         else:
-            res.append(string.join((k, v)))
+            res.append(''.join((k, v)))
     return res
 
 
@@ -255,7 +251,7 @@ def _list2iconmap(icons_list):
     for i in icons_list:
         if i:
             try:
-                k, v = string.split(i)
+                k, v = i.split()
             except ValueError:
                 raise ValueError(_iconmap_error % i)
             icons_mapping[k] = v
@@ -266,7 +262,7 @@ def _iconmap2list(icons_mapping):
     """_iconmap2list"""
     res = []
     for key in sorted(icons_mapping.keys()):
-        res.append(string.join((key, icons_mapping[key])))
+        res.append(''.join((key, icons_mapping[key])))
     return res
 
 
@@ -341,12 +337,12 @@ def _create_builtin_ob(c, id, file, path):
 
 def _create_ob_from_function(c, id, file, path):
     try:
-        i = string.rindex(c, '.')
+        i = c.rindex('.')
         m, c = c[:i], c[i+1:]
         m = __import__(m, globals(), locals(), (c,))
         c = getattr(m, c)
-        f = getattr(c, 'createSelf').im_func
-        if f.func_code.co_varnames == ('id', 'file'):
+        f = getattr(c, 'createSelf').__func__
+        if f.__code__.co_varnames == ('id', 'file'):
             return _wrap_ob(f(id, file), path)
     except Exception:
         pass
@@ -354,7 +350,7 @@ def _create_ob_from_function(c, id, file, path):
 
 def _create_ob_from_factory(c, id, file, path):
     try:
-        i = string.rindex(c, '.')
+        i = c.rindex('.')
         m, c = c[:i], c[i+1:]
         c = getObject(m, c)
         f = c()
@@ -443,9 +439,9 @@ def _wrap_method(c, name):
         m = getattr(c.__bases__[-1], name)
     except AttributeError:
         return
-    f = m.im_func
-    a = list(f.func_code.co_varnames)[:f.func_code.co_argcount]
-    d = f.func_defaults or ()
+    f = m.__func__
+    a = list(f.__code__.co_varnames)[:f.__code__.co_argcount]
+    d = f.__defaults__ or ()
     arglist = []
     baseargs = []
     while (len(a) > len(d)):
@@ -455,8 +451,8 @@ def _wrap_method(c, name):
     for i in range(len(a)):
         arglist.append('%s=%s' % (a[i], repr(d[i])))
         baseargs.append(a[i])
-    arglist = '(' + string.join(arglist, ',') + ')'
-    baseargs = '(' + string.join(baseargs, ',') + ')'
+    arglist = '(' + ','.join(arglist) + ')'
+    baseargs = '(' + ','.join(baseargs) + ')'
     d = {}
     # exec _wrapper_method % vars() in globals(), d
     exec(_wrapper_method % vars(), globals(), d)
@@ -644,7 +640,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             pass
 
     def __getitem__(self, i):
-        if (type(i) is StringType):
+        if isinstance(i, (str, bytes)):
             return self._safe_getOb(i)
         else:
             raise TypeError('index must be a string')
@@ -680,7 +676,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         if (spec is not None):
             try:
                 if isinstance(spec, str):
-                    spec = string.split(spec, ' ')
+                    spec = spec.split(' ')
                 curdir = os.getcwd()
                 os.chdir(self.basepath)
                 candidates = []
@@ -697,8 +693,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                 ids = candidates
             finally:
                 os.chdir(curdir)
-        ids = filter(valid_id, ids)
-        ids.sort()
+        ids = sorted(filter(valid_id, ids))
         return ids
 
     def _safe_getOb(self, name, default=_marker):
@@ -821,7 +816,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
     def _write_file(self, file, path):
         try:
-            if type(file) is StringType:
+            if isinstance(file, bytes):
                 outfile = open(path, 'wb')
                 outfile.write(file)
                 outfile.close()
@@ -845,8 +840,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
     def manage_createDirectory(self, path, action='manage_workspace',
                                REQUEST=None):
         """Create a new directory relative to this directory."""
-        parts = os.path.split(path)
-        parts = filter(lambda p: p not in ('.', '..'), parts)
+        parts = [p for p in os.path.split(path) if p not in ('.', '..')]
         path = os.path.join(*parts)
         fullpath = os.path.join(self.basepath, path)
         if os.path.exists(fullpath):
@@ -885,16 +879,16 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             # First check for a UNIX full path. There will be no UNIX path
             # separators in a Windows path.
             if '/' in filename:
-                id = filename[string.rfind(filename, '/')+1:]
+                id = filename[filename.rfind('/')+1:]
             # Next check for Window separators. If there are no UNIX path
             # separators then it's probably a Windows path and not a random
             # relative UNIX path which happens to have backslashes in it.
             # Lets hope this never happens, anyway. ;)
             elif '\\' in filename:
-                id = filename[string.rfind(filename, '\\')+1:]
+                id = filename[filename.rfind('\\')+1:]
             # Not sure if we'll ever get a Mac path, but here goes...
             elif ':' in filename:
-                id = filename[string.rfind(filename, ':')+1:]
+                id = filename[filename.rfind(':')+1:]
             # Else we have a filename with no path components so let's use
             # that for the id.
             else:
@@ -1017,12 +1011,12 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             if REQUEST and '__lcp' in REQUEST:
                 cp = REQUEST['__lcp']
         if cp is None:
-            raise CopyError(eNoData)
+            raise CopyError('No clipboard data found.')
 
         try:
             cp = _cb_decode(cp)
-        except Exception:
-            raise CopyError(eInvalid)
+        except Exception as e:
+            six.raise_from(CopyError('Clipboard Error'), e)
 
         oblist = []
         m = FileMoniker()
@@ -1032,7 +1026,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             try:
                 ob = m.bind(self.root or self)
             except Exception:
-                raise CopyError(eNotFound)
+                raise CopyError('Item Not Found')
             self._verifyObjectPaste(ob, REQUEST)
             oblist.append(ob)
 
@@ -1118,9 +1112,8 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         for v in r:
             s = '%s%s' % ((v.type != 'directory'), v.id)
             res.append((s, v))
-        res.sort()
 
-        return [x[1] for x in res]
+        return [x[1] for x in sorted(res)]
 
     def fileItems(self, spec=None, propagate=1):
         """Return a list of (id, fileobject) tuples.
@@ -1249,7 +1242,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                 break
             ob = ob.aq_parent
         ids.reverse()
-        return string.join(ids, '/')
+        return '/'.join(ids)
 
     def parentURL(self):
         """Return the URL of the parent directory."""
@@ -1257,12 +1250,12 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         spec = self.REQUEST.get('spec', None)
         if (spec is not None):
             if isinstance(spec, str):
-                url = '%s?spec=%s' % (url, urllib.quote(spec))
+                url = '%s?spec=%s' % (url, quote(spec))
             else:
                 query = []
                 for patt in spec:
-                    query.append('spec:list=%s' % urllib.quote(patt))
-                url = url + '?' + string.join(query, '&')
+                    query.append('spec:list=%s' % quote(patt))
+                url = url + '?' + '&'.join(query)
         return url
 
     def defaultDocument(self):
@@ -1270,7 +1263,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         as a Zope object or None."""
         # Don't know why but self.default_document is sometimes empty
         try:
-            files = string.split(self.default_document)
+            files = self.default_document.split()
             for file in files:
                 path = self._getpath(file)
                 if (os.path.isfile(path)):
@@ -1374,7 +1367,7 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
             return target
         default_documents = self.parent.default_document
         if isinstance(default_documents, str):
-            default_documents = string.split(default_documents, ' ')
+            default_documents = default_documents.split(' ')
         for file in default_documents:
             path = os.path.join(self.path, file)
             if (os.path.isfile(path)):
@@ -1395,20 +1388,20 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
 
     def _getURL(self, spec):
         """_getURL"""
-        url = urllib.quote(self.id)
+        url = quote(self.id)
         if (self.type == 'directory') and (spec is not None):
             if isinstance(spec, str):
-                return url + '?spec=' + urllib.quote(spec)
+                return url + '?spec=' + quote(spec)
             else:
                 query = []
                 for patt in spec:
-                    query.append('spec:list=%s' % urllib.quote(patt))
-                return url + '?' + string.join(query, '&')
+                    query.append('spec:list=%s' % quote(patt))
+                return url + '?' + '&'.join(query)
         return url
 
     def _getPlainURL(self):
         """_getPlainURL"""
-        return urllib.quote(self.id)
+        return quote(self.id)
 
     def _getType(self):
         """Return the content type of a file."""
@@ -1432,13 +1425,13 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
 
     def _getIcon(self):
         """Return the path of the icon associated with this file type."""
-        content_type = string.lower(self.type)
+        content_type = self.type.lower()
         _icon_map = self.parent._icon_map
         try:
             return _icon_map[content_type]
         except KeyError:
             pass
-        content_type = content_type[:string.find(content_type, '/')]
+        content_type = content_type[:content_type.find('/')]
         try:
             return _icon_map[content_type]
         except KeyError:
@@ -1653,7 +1646,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         OFS.PropertyManager.PropertyManager.manage_editProperties(self,
                                                                   REQUEST)
 
-        if string.strip(self.file_filter) == '':
+        if not self.file_filter.strip():
             self.file_filter = None
         if self.file_filter == 'None':
             self.file_filter = None
@@ -1748,7 +1741,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         """Return true if is Directory and has default doc"""
         # Don't know why but self.default_document is sometimes empty
         try:
-            files = string.split(self.default_document)
+            files = self.default_document.split()
             for file in files:
                 path = self._getpath(file)
                 if (os.path.isfile(path)):

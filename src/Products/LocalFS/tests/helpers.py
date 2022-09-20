@@ -37,25 +37,10 @@
 #      (http://www.zope.org/)."
 #
 ##############################################################################
+# Helper functions and definitions for LocalFS tests
+
 import os
 
-from App.ImageFile import ImageFile
 
-from . import LocalFS
-
-
-misc_ = {}
-www_files = os.listdir(os.path.join(os.path.dirname(__file__), 'www'))
-icons = [f for f in www_files if f[-4:] == '.gif']
-
-for icon in icons:
-    misc_[icon] = ImageFile('www/%s' % icon, globals())
-
-
-def initialize(context):
-    context.registerClass(
-        LocalFS.LocalFS,
-        constructors=(LocalFS.manage_addLocalFSForm,
-                      LocalFS.manage_addLocalFS),
-        icon='www/fs.gif',
-        )
+TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
+LOCALFS_ROOT = os.path.join(TESTS_PATH, 'files')
