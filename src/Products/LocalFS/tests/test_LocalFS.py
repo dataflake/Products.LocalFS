@@ -41,11 +41,17 @@
 
 import unittest
 
+from Products.PageTemplates.ZopePageTemplate import manage_addPageTemplate
+from Testing.makerequest import makerequest
+
 from ..LocalFS import _iswin32
+from .helpers import ADMIN_USER
 from .helpers import LOCALFS_ROOT
+from .helpers import FilesystemTestSupport
+from .helpers import FunctionalTestCase
 
 
-class LocalFSTests(unittest.TestCase):
+class LocalFSTests(unittest.TestCase, FilesystemTestSupport):
 
     def _getTargetClass(self):
         from ..LocalFS import LocalFS
@@ -58,6 +64,10 @@ class LocalFSTests(unittest.TestCase):
     def _makeSimple(self):
         klass = self._getTargetClass()
         return klass('localfs', 'LocalFS Title', LOCALFS_ROOT, 'user', 'pw')
+
+    def tearDown(self):
+        self.cleanup_files()
+        super().tearDown()
 
     def test_instantiation(self):
         lfs = self._makeSimple()
@@ -86,4 +96,106 @@ class LocalFSTests(unittest.TestCase):
         # Only on Windows
         if _iswin32:
             self.assertEqual(folder.lfs.username, None)
-            self.assertEqual(folder.lfs._password, None)
+            self.assertEqual(folder.lfs._password, '')
+
+    def test_hasDefaultDocument(self):
+        lfs = self._makeSimple()
+        lfs.default_document = 'index.html default.html'
+
+        self.assertFalse(lfs.hasDefaultDocument())
+
+        manage_addPageTemplate(lfs, 'index.html', b'<html>')
+        self.assertTrue(lfs.hasDefaultDocument())
+
+
+class LocalFSFunctionalTests(FunctionalTestCase):
+
+    def test_manage_editProperties(self):
+        self.login(ADMIN_USER)
+        lfs = makerequest(self.folder.localfs)
+        req = lfs.REQUEST
+
+        req.form['title'] = 'New Title'
+        req.form['basepath'] = '/tmp'
+        req.form['username'] = 'user1'
+        req.form['password'] = 'pass1'
+        req.form['default_document'] = 'my.html index.jsp'
+        req.form['tree_view'] = 1
+        req.form['catalog'] = 1
+        req.form['type_map'] = ['',
+                                '.dtml text/html DTMLMethod',
+                                '.gif image/gif Image',
+                                '.foo Foobar']
+        req.form['icon_map'] = ['', 'directory dir.gif', 'foobar foo.gif']
+        req.form['file_filter'] = 'None'
+
+        lfs.manage_editProperties(req)
+        self.assertEqual(lfs.title, 'New Title')
+        self.assertEqual(lfs.basepath, '/tmp')
+        self.assertEqual(lfs.default_document, 'my.html index.jsp')
+        self.assertEqual(lfs.tree_view, 1)
+        self.assertEqual(lfs.catalog, 1)
+        self.assertEqual(lfs._type_map,
+                         {'.dtml': ('text/html', 'DTMLMethod'),
+                          '.gif': ('image/gif', 'Image'),
+                          '.foo': ('Foobar', '')})
+        self.assertEqual(lfs._icon_map,
+                         {'directory': 'dir.gif', 'foobar': 'foo.gif'})
+        self.assertIsNone(lfs.file_filter)
+        self.assertTrue(lfs.isPrincipiaFolderish)
+        self.assertTrue(lfs.catalog)
+
+        if _iswin32:  # Only on Windows
+            self.assertEqual(lfs.username, 'user1')
+            self.assertEqual(lfs._password, 'pass1')
+            self.assertEqual(lfs.password, '')  # Gets reset automatically
+
+        # Some special cases
+        req.form['file_filter'] = 'myfilter'
+        lfs.manage_editProperties(req)
+        self.assertEqual(lfs.file_filter, 'myfilter')
+        req.form['file_filter'] = ' '
+        lfs.manage_editProperties(req)
+        self.assertIsNone(lfs.file_filter)
+
+    def test_manage_changeProperties(self):
+        self.login(ADMIN_USER)
+        lfs = makerequest(self.folder.localfs)
+
+        new_type_map = ['',
+                        '.dtml text/html DTMLMethod',
+                        '.gif image/gif Image',
+                        '.foo Foobar']
+        new_icon_map = ['', 'directory dir.gif', 'foobar foo.gif']
+
+        lfs.manage_changeProperties(REQUEST=None,
+                                    title='New Title',
+                                    basepath='/tmp',
+                                    username='user1',
+                                    password='pass1',
+                                    default_document='my.html index.jsp',
+                                    tree_view=1,
+                                    catalog=1,
+                                    type_map=new_type_map,
+                                    icon_map=new_icon_map,
+                                    file_filter='')
+
+        self.assertEqual(lfs.title, 'New Title')
+        self.assertEqual(lfs.basepath, '/tmp')
+        self.assertEqual(lfs.default_document, 'my.html index.jsp')
+        self.assertEqual(lfs.tree_view, 1)
+        self.assertEqual(lfs.catalog, 1)
+        self.assertEqual(lfs._type_map,
+                         {'.dtml': ('text/html', 'DTMLMethod'),
+                          '.gif': ('image/gif', 'Image'),
+                          '.foo': ('Foobar', '')})
+        self.assertEqual(lfs._icon_map,
+                         {'directory': 'dir.gif', 'foobar': 'foo.gif'})
+        self.assertFalse(lfs.file_filter)
+        self.assertTrue(lfs.isPrincipiaFolderish)
+        self.assertTrue(lfs.catalog)
+
+        if _iswin32:  # Only on Windows
+            self.assertEqual(lfs.username, 'user1')
+            self.assertEqual(lfs._password, 'pass1')
+            self.assertEqual(lfs.password, '')  # Gets reset automatically

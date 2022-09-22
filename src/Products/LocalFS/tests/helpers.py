@@ -40,7 +40,87 @@
 # Helper functions and definitions for LocalFS tests
 
 import os
+import shutil
+
+from Testing.ZopeTestCase import ZopeTestCase
+
+from ..LocalFS import manage_addLocalFS
 
 
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 LOCALFS_ROOT = os.path.join(TESTS_PATH, 'files')
+ADMIN_USER = 'admin'
+
+
+class FunctionalTestCase(ZopeTestCase):
+
+    _setup_fixture = True
+
+    def _setup(self):
+        super()._setup()
+
+        # Add an admin user
+        uf = self.folder.acl_users
+        uf.userFolderAddUser(ADMIN_USER, 'foobar', ['Manager'], [])
+
+        # Add a LocalFS instance
+        manage_addLocalFS(self.folder,
+                          'localfs',
+                          'LocalFS Title',
+                          LOCALFS_ROOT)
+
+        # Make sure the objectXXX methods work
+        self.folder.localfs.tree_view = True
+        self.folder.localfs.catalog = True
+
+
+class FilesystemTestSupport:
+    """ Mix-in with utility methods for manipulating filesystem files """
+
+    def cleanup_files(self):
+        filenames = self.list_folder()
+        filenames.remove('.gitkeep')
+
+        for filename in filenames:
+            path = os.path.join(LOCALFS_ROOT, filename)
+            if os.path.isfile(path):
+                os.unlink(path)
+            elif os.path.isdir(path):
+                shutil.rmtree(path)
+
+    def list_folder(self, subpath=None):
+        if subpath:
+            path = os.path.join(LOCALFS_ROOT, subpath)
+        else:
+            path = LOCALFS_ROOT
+        return os.listdir(path)
+
+    def assertFolderExists(self, subpath):
+        path = os.path.join(LOCALFS_ROOT, subpath)
+        if not os.path.isdir(path):
+            raise AssertionError('Folder does not exist: %s' % path)
+
+    def assertNotFolderExists(self, subpath):
+        path = os.path.join(LOCALFS_ROOT, subpath)
+        if os.path.isdir(path):
+            raise AssertionError('Folder exists: %s' % path)
+
+    def assertFileExists(self, subpath):
+        path = os.path.join(LOCALFS_ROOT, subpath)
+        if not os.path.isfile(path):
+            raise AssertionError('File does not exist: %s' % path)
+
+    def assertNotFileExists(self, subpath):
+        path = os.path.join(LOCALFS_ROOT, subpath)
+        if os.path.isfile(path):
+            raise AssertionError('File exists: %s' % path)
+
+    def read_file(self, subpath):
+        with open(os.path.join(LOCALFS_ROOT, subpath), 'rb') as fp:
+            return fp.read()
+
+
+class FakeContent:
+
+    basepath = ''
+    _local_path = ''

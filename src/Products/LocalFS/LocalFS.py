@@ -41,11 +41,9 @@
 __version__ = '1.12'
 __doc__ = """Local File System product"""
 
-import errno
 import glob
 import marshal  # sbk
 import os
-import re
 import stat
 import sys
 
@@ -57,6 +55,8 @@ import Acquisition
 import App
 import OFS
 import Persistence
+from AccessControl.SecurityManagement import getSecurityManager
+from App.Common import absattr
 from App.Dialogs import MessageDialog
 from App.FactoryDispatcher import ProductDispatcher
 from App.special_dtml import HTMLFile
@@ -76,6 +76,7 @@ from ZPublisher.HTTPResponse import HTTPResponse
 from .exceptions import DeleteError
 from .exceptions import RenameError
 from .exceptions import UploadError
+from .utils import HAVE_FTP
 from .utils import _create_ob
 from .utils import _get_content_type
 from .utils import _iconmap2list
@@ -89,9 +90,9 @@ from .utils import _set_timestamp
 from .utils import _test_read
 from .utils import _typemap2list
 from .utils import _unknown
-from .utils import absattr
 from .utils import bad_id
 from .utils import sanity_check
+from .utils import unc_expr
 from .utils import valid_id
 
 
@@ -100,7 +101,6 @@ if (_iswin32):
         import win32wnet
     except ImportError:
         pass
-    unc_expr = re.compile(r'(\\\\[^\\]+\\[^\\]+)(.*)')
 
 
 ############################################################################
@@ -229,7 +229,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         try:
             # FTP - PUT
             if method not in ('GET', 'POST', 'HEAD'):
-                return LockNullResource(self, name, REQUEST).__of__(self)
+                return LockNullResource(name).__of__(self)
         except Exception:
             pass
         try:
@@ -267,14 +267,10 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             spec = self.file_filter
         try:
             ids = os.listdir(self.basepath)
-        except (OSError, IOError) as err:
-            if err[0] == errno.EACCES:
-                raise Forbidden(HTTPResponse()._error_html(
-                    'Forbidden',
-                    'Sorry, you do not have permission to read '
-                    'the requested directory.<p>'))
-            else:
-                raise
+        except PermissionError:
+            raise Forbidden('Sorry, you do not have permission to read '
+                            'the requested directory.')
+
         if (spec is not None):
             try:
                 if isinstance(spec, str):
@@ -310,8 +306,13 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             ob = LocalDirectory(id, path, self.root or self, self.tree_view,
                                 self.catalog, self._type_map, self._icon_map)
         elif (os.path.isfile(path)):
-            f = open(path, 'rb')
-            ob = _create_ob(id, f, path, self._type_map)
+            try:
+                with open(path, 'rb') as f:
+                    ob = _create_ob(id, f, path, self._type_map)
+            except PermissionError:
+                raise Forbidden('Sorry, you do not have permission to read '
+                                'the requested resource "%s".' % id)
+
         if (ob is None):
             if default is _marker:
                 raise AttributeError(id)
@@ -353,14 +354,9 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
     def _safe_setOb(self, id, ob):
         try:
             self._setOb(id, ob)
-        except EnvironmentError as err:
-            if (err[0] == errno.EACCES):
-                raise Forbidden(HTTPResponse()._error_html(
-                    'Forbidden',
-                    'Sorry, you do not have permission to write '
-                    'to this directory.<p>'))
-            else:
-                raise
+        except PermissionError:
+            raise Forbidden('Sorry, you do not have permission to write '
+                            'to this directory.')
 
     def _setOb(self, id, ob):
         if not hasattr(ob, 'meta_type'):
@@ -382,19 +378,15 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             else:
                 t = 'file'
                 os.unlink(path)
-        except EnvironmentError as err:
-            if (err[0] == errno.EACCES):
-                if t == 'directory' and os.listdir(path):
-                    raise DeleteError(HTTPResponse()._error_html(
-                        'DeleteError',
-                        'The directory "%s" is not empty.' % id))
-                else:
-                    raise Forbidden(HTTPResponse()._error_html(
-                        'Forbidden',
-                        'Sorry, you do not have permission to delete '
-                        'the requested %s ("%s").' % (t, id)))
-            else:
-                raise
+        except PermissionError:
+            raise Forbidden('Sorry, you do not have permission to delete '
+                            'the requested %s ("%s").' % (t, id))
+        except OSError:
+            if t == 'directory' and os.listdir(path):
+                raise DeleteError(HTTPResponse()._error_html(
+                    'DeleteError',
+                    'The directory "%s" is not empty.' % id))
+            raise
 
     def _copyOb(self, id, ob):
         self._setObject(id, ob)
@@ -404,14 +396,9 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         dest = self._getpath(id)
         try:
             os.rename(src, dest)
-        except EnvironmentError as err:
-            if (err[0] == errno.EACCES):
-                raise Forbidden(HTTPResponse()._error_html(
-                    'Forbidden',
-                    'Sorry, you do not have permission to write '
-                    'to this directory.<p>'))
-            else:
-                raise
+        except PermissionError:
+            raise Forbidden('Sorry, you do not have permission to write '
+                            'to this directory.')
 
     def _verifyObjectPaste(self, ob, REQUEST):
         pass
@@ -430,14 +417,9 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                     outfile.write(data)
                     data = file.read(blocksize)
                 outfile.close()
-        except EnvironmentError as err:
-            if (err[0] == errno.EACCES):
-                raise Forbidden(HTTPResponse()._error_html(
-                    'Forbidden',
-                    'Sorry, you do not have permission to write '
-                    'to this directory.<p>'))
-            else:
-                raise
+        except PermissionError:
+            raise Forbidden('Sorry, you do not have permission to write '
+                            'to this directory.')
 
     def manage_createDirectory(self, path, action='manage_workspace',
                                REQUEST=None):
@@ -454,14 +436,10 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         else:
             try:
                 os.makedirs(fullpath)
-            except EnvironmentError as err:
-                if (err[0] == errno.EACCES):
-                    raise Forbidden(HTTPResponse()._error_html(
-                        'Forbidden',
-                        'Sorry, you do not have permission to write '
-                        'to this directory.<p>'))
-                else:
-                    raise
+            except PermissionError:
+                raise Forbidden('Sorry, you do not have permission to write '
+                                'to this directory.')
+
             if REQUEST:
                 return MessageDialog(
                         title='Success!',
@@ -522,20 +500,12 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
     def manage_overwrite(self, file, path, REQUEST=None):
         """Overwrite a local file."""
-        if REQUEST is None and hasattr(self, 'aq_acquire'):
-            try:
-                REQUEST = self.aq_acquire('REQUEST')
-            except Exception:
-                pass
-        try:
-            user = REQUEST['AUTHENTICATED_USER']
-        except Exception:
-            user = None
-        if user is None or not user.has_permission('Overwrite local files',
-                                                   self):
-            raise Unauthorized(HTTPResponse()._error_html(
-                    'Unauthorized',
-                    'Sorry, you are not authorized to overwrite files.<p>'))
+        user = getSecurityManager().getUser()
+
+        if user is None or \
+           not user.has_permission('Overwrite local files', self):
+            raise Unauthorized(
+                    'Sorry, you are not authorized to overwrite files.')
         self._write_file(file, path)
 
     def manage_renameObject(self, id, new_id, REQUEST=None):
@@ -551,18 +521,16 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         t = self._getpath(new_id)
         try:
             os.rename(f, t)
-        except EnvironmentError as err:
-            if (err[0] == errno.EACCES):
-                if os.path.isdir(f):
-                    t = 'directory'
-                else:
-                    t = 'file'
-                raise RenameError(HTTPResponse()._error_html(
-                    'RenameError'
-                    'Sorry, you do not have permission to rename '
-                    'the requested %s ("%s").' % (t, id)))
+        except PermissionError:
+            if os.path.isdir(f):
+                t = 'directory'
             else:
-                raise
+                t = 'file'
+            raise RenameError(HTTPResponse()._error_html(
+                'RenameError'
+                'Sorry, you do not have permission to rename '
+                'the requested %s ("%s").' % (t, id)))
+
         if REQUEST is not None:
             return self.manage_main(self, REQUEST, update_menu=1)
 
@@ -844,7 +812,8 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                 break
             ob = ob.aq_parent
         ids.reverse()
-        return '/'.join(ids)
+        path_str = '/'.join(ids)
+        return path_str.encode('UTF-8')
 
     def parentURL(self):
         """Return the URL of the parent directory."""
@@ -882,7 +851,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         return DateTime(t)
 
     #
-    #  FTP Support - sbk
+    #  FTP and WebDAV Support - sbk
     #
 
     @security.private
@@ -896,8 +865,8 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             ob = ZopePageTemplate(name, body, content_type=typ)
         elif typ in ('text/html', 'text/xml', 'text/plain'):
             from OFS.DTMLDocument import DTMLDocument
-        if not isinstance(body, str):
-            body = body.read()
+            if not isinstance(body, (str, bytes)):
+                body = body.read()
             ob = DTMLDocument(body, __name__=name)
         elif typ[:6] == 'image/':
             from OFS.Image import Image
@@ -907,34 +876,38 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             ob = File(name, '', body, content_type=typ)
         return ob
 
-    def manage_FTPlist(self, REQUEST):
-        """Directory listing for FTP"""
-        out = ()
-        files = list(self.fileItems())
-        try:
-            if not (hasattr(self, 'isTopLevelPrincipiaApplicationObject') and
-                    self.isTopLevelPrincipiaApplicationObject):
-                files.insert(0, ('..', self.aq_parent))
-        except Exception:
-            pass
+    if HAVE_FTP:
 
-        for k, v in files:
+        def manage_FTPlist(self, REQUEST):
+            """Directory listing for FTP"""
+            out = ()
+            files = list(self.fileItems())
+            is_root = getattr(self,
+                              'isTopLevelPrincipiaApplicationObject',
+                              None)
             try:
-                stat = marshal.loads(v.manage_FTPstat(REQUEST))
+                if not is_root and self.isTopLevelPrincipiaApplicationObject:
+                    files.insert(0, ('..', self.aq_parent))
             except Exception:
-                stat = None
-            if stat is not None:
-                out = out + ((k, stat),)
-        return marshal.dumps(out)
+                pass
 
-    def manage_FTPstat(self, REQUEST):
-        """Psuedo stat used for FTP listings"""
-        # mode = 0040000 | 0770
-        mode = 33272 | 0o0770
-        mtime = self.bobobase_modification_time().timeTime()
-        owner = group = 'Zope'
-        return marshal.dumps((mode, 0, 0, 1, owner, group, 0, mtime, mtime,
-                              mtime))
+            for k, v in files:
+                try:
+                    stat = marshal.loads(v.manage_FTPstat(REQUEST))
+                except Exception:
+                    stat = None
+                if stat is not None:
+                    out = out + ((k, stat),)
+            return marshal.dumps(out)
+
+        def manage_FTPstat(self, REQUEST):
+            """Psuedo stat used for FTP listings"""
+            # mode = 0040000 | 0770
+            mode = 33272 | 0o0770
+            mtime = self.bobobase_modification_time().timeTime()
+            owner = group = 'Zope'
+            return marshal.dumps((mode, 0, 0, 1, owner, group, 0, mtime, mtime,
+                                  mtime))
 
 
 class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
@@ -962,19 +935,6 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
         self.mtime = self._getTime()
         self.display_size = self._getDisplaySize()
         self.display_mtime = self._getDisplayTime()
-
-    def getDefaultDocumentPath(self, target, default=''):
-        """Return true if is Directory and has default doc"""
-        if self.type != 'directory':
-            return target
-        default_documents = self.parent.default_document
-        if isinstance(default_documents, str):
-            default_documents = default_documents.split(' ')
-        for file in default_documents:
-            path = os.path.join(self.path, file)
-            if (os.path.isfile(path)):
-                return os.path.join(target, file)
-        return os.path.join(target, default)
 
     def getObject(self):
         """Return a Zope object representing this local file."""
@@ -1086,7 +1046,7 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
         return '%s %s' % (t.Time(), t.Date())
 
     #
-    # FTP Support - sbk
+    # FTP and WebDAV Support - sbk
     #
 
     def PUT(self, REQUEST, RESPONSE):
@@ -1107,19 +1067,21 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
 
     getSize = get_size
 
-    def manage_FTPstat(self, REQUEST):
-        """Psuedo stat used for FTP listings"""
-        size = self._getSize()
-        # mode = 0100000 | 0660
-        mode = 33152 | 0o0660
-        if self.type == 'directory':
-            size = 0
-            # mode = 0040000 | 0770
-            mode = 33272 | 0o0770
-        mtime = self.bobobase_modification_time().timeTime()
-        owner = group = 'Zope'
-        return marshal.dumps((mode, 0, 0, 1, owner, group, size, mtime,
-                              mtime, mtime))
+    if HAVE_FTP:
+
+        def manage_FTPstat(self, REQUEST):
+            """Psuedo stat used for FTP listings"""
+            size = self._getSize()
+            # mode = 0100000 | 0660
+            mode = 33152 | 0o0660
+            if self.type == 'directory':
+                size = 0
+                # mode = 0040000 | 0770
+                mode = 33272 | 0o0770
+            mtime = self.bobobase_modification_time().timeTime()
+            owner = group = 'Zope'
+            return marshal.dumps((mode, 0, 0, 1, owner, group, size, mtime,
+                                  mtime, mtime))
 
 
 class FileMoniker:
@@ -1207,7 +1169,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
     isPrincipiaFolderish = 1  # leaving this at one though
     catalog = 0
     root = None
-    password = ''
+    password = _password = ''
 
     _type_map = _types
     _icon_map = _icons
@@ -1216,7 +1178,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
     file_filter = None
 
     def __init__(self, id, title, basepath, username, password):
-        """LocalDirectory __init__"""
+        """LocalFS __init__"""
         LocalDirectory.__init__(self, id, basepath, self, self.tree_view,
                                 self.catalog, self._type_map, self._icon_map,
                                 self.file_filter)
@@ -1225,7 +1187,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         self.basepath = self._local_path = basepath
         if (_iswin32):
             self.username = username
-            self._password = password
+            self._password = password or ''
             m = unc_expr.match(self.basepath)
             if (m is not None) and (self.username):
                 self._share = m.group(1)
@@ -1241,12 +1203,11 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         instead for most situations.
         """
         type_map = self.type_map
-        if (_iswin32):
-            username = self.username
-            password = self._password
+        icon_map = self.icon_map
+        username = self.username
+        password = self.password
 
-        OFS.PropertyManager.PropertyManager.manage_editProperties(self,
-                                                                  REQUEST)
+        super(LocalFS, self).manage_editProperties(REQUEST)
 
         if not self.file_filter.strip():
             self.file_filter = None
@@ -1254,11 +1215,11 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
             self.file_filter = None
         if self.type_map != type_map:
             self._type_map = _list2typemap(self.type_map)
-        if self.icon_map != type_map:
+        if self.icon_map != icon_map:
             self._icon_map = _list2iconmap(self.icon_map)
         if (_iswin32):
             if self.username != username or self.password != password:
-                self._password = password
+                self._password = self.password
                 if (self._connected):
                     self._disconnect()
                 m = unc_expr.match(self.basepath)
@@ -1268,7 +1229,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
                 else:
                     self._share = ''
             self.password = ''
-        self.isPrincipiaFolderish = 1
+        self.isPrincipiaFolderish = self.tree_view
         message = 'Saved changes.'
         return self.manage_propertiesForm(self, REQUEST,
                                           manage_tabs_message=message,
@@ -1281,18 +1242,19 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         of name:value pairs {'foo':6} or passing name = value parameters
         """
         type_map = self.type_map
-        if (_iswin32):
-            username = self.username
-            password = self._password
+        icon_map = self.icon_map
+        username = self.username
+        password = self._password
 
         super(LocalFS, self).manage_changeProperties(REQUEST=REQUEST, **kw)
 
         if self.type_map != type_map:
             self._type_map = _list2typemap(self.type_map)
-        if self.icon_map != type_map:
+        if self.icon_map != icon_map:
             self._icon_map = _list2iconmap(self.icon_map)
         if (_iswin32):
-            if self.username != username or self._password != password:
+            if self.username != username or self.password != password:
+                self._password = self.password
                 if (self._connected):
                     self._disconnect()
                 m = unc_expr.match(self.basepath)
@@ -1301,6 +1263,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
                     self._connect()
                 else:
                     self._share = ''
+            self.password = ''
         self.isPrincipiaFolderish = self.tree_view
 
     def _connect(self):

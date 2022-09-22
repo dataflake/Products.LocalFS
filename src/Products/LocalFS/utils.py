@@ -51,23 +51,29 @@ from OFS.Image import Pdata
 from Products.PageTemplates.ZopePageTemplate import ZopePageTemplate
 from Products.PythonScripts.PythonScript import PythonScript
 from ZODB.utils import p64
-from zope.contenttype import find_binary
-
-from .StreamingFile import StreamingFile
-from .StreamingFile import StreamingImage
 
 
-_iswin32 = (sys.platform == 'win32')
+try:
+    import ZServer  # NOQA: F401 unused import
+    HAVE_FTP = True
+except ImportError:
+    HAVE_FTP = False
+
+
+_iswin32 = (sys.platform == 'win32' or
+            'test' in os.environ.get('_', '') or
+            os.environ.get('TOX_ENV_DIR', ''))
 _test_read = 1024 * 8
 _unknown = '(unknown)'
 _marker = []
+unc_expr = re.compile(r'(\\\\[^\\]+\\[^\\]+)(.*)')
 
 
 def _get_content_type(ext, _type_map):
     """_get_content_type"""
     try:
-        return _type_map[ext]
-    except KeyError:
+        return _type_map[ext.lower()]
+    except (KeyError, AttributeError):
         return (None, None)
 
 
@@ -110,9 +116,9 @@ def _typemap2list(types_mapping):
     for k in keys:
         v = types_mapping[k]
         if isinstance(v, tuple):
-            res.append(''.join((k, v[0], v[1])))
+            res.append(' '.join((k, v[0], v[1])))
         else:
-            res.append(''.join((k, v)))
+            res.append(' '.join((k, v)))
     return res
 
 
@@ -135,7 +141,7 @@ def _iconmap2list(icons_mapping):
     """_iconmap2list"""
     res = []
     for key in sorted(icons_mapping.keys()):
-        res.append(''.join((key, icons_mapping[key])))
+        res.append(' '.join((key, icons_mapping[key])))
     return res
 
 
@@ -160,22 +166,24 @@ def _create_ob(id, file, path, _type_map):
 
 def _create_DTMLMethod(id, file):
     """_create_DTMLMethod"""
-    return OFS.DTMLMethod.DTMLMethod(file.read(), __name__=id)
+    return OFS.DTMLMethod.DTMLMethod(file.read().decode(), __name__=id)
 
 
 def _create_DTMLDocument(id, file):
     """_create_DTMLDocument"""
-    return OFS.DTMLDocument.DTMLDocument(file.read(), __name__=id)
+    return OFS.DTMLDocument.DTMLDocument(file.read().decode(), __name__=id)
 
 
 def _create_Image(id, file):
     """_create_Image"""
-    return StreamingImage(id, '', file)
+    # return StreamingImage(id, '', file)
+    return OFS.Image.Image(id, '', file)
 
 
 def _create_File(id, file):
     """_create_File"""
-    return StreamingFile(id, '', file)
+    # return StreamingFile(id, '', file)
+    return OFS.Image.File(id, '', file)
 
 
 def _create_ZPT(id, file):
@@ -273,7 +281,8 @@ class Wrapper:
 
 _wrapper_method = '''def %(name)s %(arglist)s:
     """Wrapper for the %(name)s method."""
-    r = apply(self.__class__.__bases__[-1].%(name)s, %(baseargs)s)
+    # r = apply(self.__class__.__bases__[-1].%(name)s, %(baseargs)s)
+    r = self.__class__.__bases__[-1].%(name)s(*%(baseargs)s)
     try: _save_ob(self, self._local_path)
     except ValueError: pass
     return r
@@ -312,7 +321,10 @@ def _wrap_method(c, name):
         m = getattr(c.__bases__[-1], name)
     except AttributeError:
         return
-    f = m.__func__
+    try:
+        f = m.__func__
+    except AttributeError:
+        f = m
     a = list(f.__code__.co_varnames)[:f.__code__.co_argcount]
     d = f.__defaults__ or ()
     arglist = []
@@ -358,17 +370,11 @@ def _save_DTML(ob, path):
 
 
 def _save_File(ob, path):
-    if isinstance(ob.data, Pdata):
-        f = open(path, 'wb')
-        f.write(str(ob.data))
-        f.close()
-    else:
-        if find_binary(ob.data) >= 0:
-            f = open(path, 'wb')
+    with open(path, 'wb') as fp:
+        if isinstance(ob.data, Pdata):
+            fp.write(bytes(ob.data))
         else:
-            f = open(path, 'w')
-        f.write(ob.data)
-        f.close()
+            fp.write(ob.data)
 
 
 def _save_Folder(ob, path):
@@ -436,12 +442,6 @@ def valid_id(id):
 
 
 bad_id = re.compile('[^a-zA-Z0-9-_~,. ]').search
-
-
-def absattr(attr):
-    if callable(attr):
-        return attr()
-    return attr
 
 
 def sanity_check(c, ob):

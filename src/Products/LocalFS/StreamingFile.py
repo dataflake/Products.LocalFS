@@ -1,4 +1,7 @@
+from io import BytesIO
 from io import StringIO
+
+import six
 
 from OFS.Image import File
 from OFS.Image import Image
@@ -12,12 +15,15 @@ BUFFER_SIZE = 1 << 16
 def _read_data(self, file):
     # We do not want to load the whole file into memory, so just
     # get the file size and return a faked Pdata object.
-    if isinstance(file, str):
+    if isinstance(file, (bytes, str)):
         size = len(file)
         if size < BUFFER_SIZE:
             return file, size
         # Big string: cut it into smaller chunks
-        file = StringIO(file)
+        if isinstance(file, str):
+            file = StringIO(file)
+        else:
+            file = BytesIO(file)
 
     if isinstance(file, FileUpload) and not file:
         raise ValueError('File not specified')
@@ -55,6 +61,15 @@ class Sdata(Pdata):
         self.fsize = fsize
         self.offset = _offset
 
+    def __getitem__(self, key):
+        size = min(BUFFER_SIZE, len(self))
+        if isinstance(key, int):
+            if key > size:
+                return b''
+
+            self.file.seek(self.offset+key, 0)
+            return self.file.read(1)
+
     @property
     def data(self):
         return self[0:BUFFER_SIZE]
@@ -65,21 +80,24 @@ class Sdata(Pdata):
         if offset < self.fsize:
             return Sdata(self.file, self.fsize, offset)
 
-    def __getslice__(self, i, j):
-        size = min(BUFFER_SIZE, len(self))
-        if i < 0:
-            i = max(i + size, 0)
-        j = min(j, size)
-        if j < 0:
-            j = max(j + size, 0)
-        if i >= j:
-            return ''
-        self.file.seek(self.offset+i, 0)
-        return self.file.read(j-i)
-
     def __len__(self):
         return self.fsize - self.offset
 
-    def __str__(self):
+    def __bytes__(self):
         self.file.seek(self.offset, 0)
         return self.file.read()
+
+    if six.PY2:
+        def __getslice__(self, i, j):
+            size = min(BUFFER_SIZE, len(self))
+            if i < 0:
+                i = max(i + size, 0)
+            j = min(j, size)
+            if j < 0:
+                j = max(j + size, 0)
+            if i >= j:
+                return ''
+            self.file.seek(self.offset+i, 0)
+            return self.file.read(j-i)
+
+        __str__ = __bytes__
