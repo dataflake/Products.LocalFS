@@ -81,7 +81,7 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
 
     def tearDown(self):
         self.cleanup_files()
-        super().tearDown()
+        super(LocalDirectoryAndFileTests, self).tearDown()
 
     def test_instantiation(self):
         lfs = self._makeSimple()
@@ -360,7 +360,11 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
         self.assertEqual(lof._getDisplaySize(), '(unknown)')
 
 
-class LocalDirectoryFunctionalTests(FunctionalTestCase):
+class LocalDirectoryFunctionalTests(FunctionalTestCase, FilesystemTestSupport):
+
+    def tearDown(self):
+        self.cleanup_files()
+        super(LocalDirectoryFunctionalTests, self).tearDown()
 
     def test_manage_upload(self):
         self.login(ADMIN_USER)

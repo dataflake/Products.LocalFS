@@ -20,10 +20,10 @@ def _read_data(self, file):
         if size < BUFFER_SIZE:
             return file, size
         # Big string: cut it into smaller chunks
-        if isinstance(file, str):
-            file = StringIO(file)
-        else:
+        if isinstance(file, bytes):
             file = BytesIO(file)
+        else:
+            file = StringIO(file)
 
     if isinstance(file, FileUpload) and not file:
         raise ValueError('File not specified')
