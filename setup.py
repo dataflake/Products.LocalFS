@@ -20,7 +20,7 @@ setup(name=NAME,
       version=__version__,
       license='BSD License',
       description='The Local File System product',
-      long_description=_read('README.md'),
+      long_description=_read('README.rst'),
       classifiers=[
         'Development Status :: 6 - Mature',
         'Environment :: Web Environment',
