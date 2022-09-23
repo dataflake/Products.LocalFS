@@ -88,7 +88,6 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
         self.assertEqual(lfs.getId(), 'localfs')
         self.assertEqual(lfs.basepath, LOCALFS_ROOT)
         self.assertIs(aq_base(lfs.root), aq_base(lfs))
-        self.assertFalse(lfs.tree_view)
         self.assertTrue(lfs._type_map)
         self.assertTrue(lfs._icon_map)
         self.assertIsNone(lfs.file_filter)
@@ -136,34 +135,6 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
             lfs._checkId('.gitkeep', allow_dup=False)
         self.assertIn('it is already in use', str(context.exception))
         self.assertIsNone(lfs._checkId('.gitkeep', allow_dup=True))
-
-    def test_Directory(self):
-        lfs = self._makeSimple()
-        req = {'REQUEST_METHOD': 'GET'}
-
-        self.assertNotFolderExists('foo')
-        self.assertIsNone(lfs.__bobo_traverse__(req, 'foo'))
-        with self.assertRaises(AttributeError) as context:
-            getattr(lfs, 'foo')
-        self.assertEqual(str(context.exception), 'foo')
-        with self.assertRaises(AttributeError) as context:  # MISBEHAVIOR!
-            lfs['foo']
-        self.assertEqual(str(context.exception), 'foo')
-        self.assertFalse(lfs.objectIds(spec=['Local Directory']))
-
-        returned = lfs.manage_createDirectory('foo', REQUEST='fake')
-        self.assertIn('The directory has been created', returned)
-        self.assertFolderExists('foo')
-        self.assertIn('foo', lfs.objectIds())
-        self.assertEqual(lfs.objectIds(spec=['Local Directory']), ['foo'])
-
-        # Calling manage_createDirectory again won't do anything
-        returned = lfs.manage_createDirectory('foo', REQUEST='fake')
-        self.assertIn('The directory already exists', returned)
-
-        lfs.manage_delObjects(ids=['foo'])
-        self.assertNotFolderExists('foo')
-        self.assertFalse(lfs.objectIds(spec=['Local Directory']))
 
     def test_PageTemplate(self):
         lfs = self._makeSimple()
@@ -254,28 +225,6 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
         self.assertFalse(lfs.fileIds(spec=['Local Directory']))
         self.assertFalse(lfs.fileValues(spec=['Local Directory']))
         self.assertFalse(lfs.fileItems(spec=['Local Directory']))
-
-    def test_tpValues(self):
-        lfs = self._makeSimple()
-
-        self.assertFalse(lfs.tpValues())
-
-        lfs.manage_createDirectory('foo')
-
-        # Local Folder objects are not folderish by default
-        tp_vals = lfs.tpValues()
-        self.assertFalse(lfs.tpValues())
-
-        lfs.tree_view = True
-        tp_vals = lfs.tpValues()
-        self.assertEqual(len(tp_vals), 1)
-        folder_ob = tp_vals[0]
-        self.assertEqual(folder_ob.meta_type, 'Local Directory')
-
-    def test_tpId(self):
-        lfs = self._makeSimple()
-
-        self.assertEqual(lfs.tpId(), b'bG9jYWxmcw')
 
     def test_defaultDocument(self):
         lfs = self._makeSimple()
@@ -387,3 +336,32 @@ class LocalDirectoryFunctionalTests(FunctionalTestCase, FilesystemTestSupport):
             lfs.manage_upload(fp, 'new_test.pt')
         self.assertIn('new_test.pt', lfs.objectIds())
         self.assertEqual(lfs['new_test.pt'].data, b'<html></html>')
+
+    def test_Directory(self):
+        self.login(ADMIN_USER)
+        lfs = makerequest(self.folder.localfs)
+        req = lfs.REQUEST
+
+        self.assertNotFolderExists('foo')
+        self.assertIsNone(lfs.__bobo_traverse__(req, 'foo'))
+        with self.assertRaises(AttributeError) as context:
+            getattr(lfs, 'foo')
+        self.assertIn('foo', str(context.exception))
+        with self.assertRaises(AttributeError) as context:  # MISBEHAVIOR!
+            lfs['foo']
+        self.assertEqual(str(context.exception), 'foo')
+        self.assertFalse(lfs.objectIds(spec=['Local Directory']))
+
+        returned = lfs.manage_createDirectory('foo', REQUEST=req)
+        self.assertIn('Directory foo has been created', returned)
+        self.assertFolderExists('foo')
+        self.assertIn('foo', lfs.objectIds())
+        self.assertEqual(lfs.objectIds(spec=['Local Directory']), ['foo'])
+
+        # Calling manage_createDirectory again won't do anything
+        returned = lfs.manage_createDirectory('foo', REQUEST=req)
+        self.assertIn('Directory foo already exists', returned)
+
+        lfs.manage_delObjects(ids=['foo'])
+        self.assertNotFolderExists('foo')
+        self.assertFalse(lfs.objectIds(spec=['Local Directory']))

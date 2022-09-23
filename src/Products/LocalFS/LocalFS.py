@@ -45,7 +45,6 @@ import glob
 import marshal  # sbk
 import os
 import stat
-import sys
 
 import six
 from six.moves.urllib.parse import quote
@@ -57,7 +56,6 @@ import OFS
 import Persistence
 from AccessControl.SecurityManagement import getSecurityManager
 from App.Common import absattr
-from App.Dialogs import MessageDialog
 from App.FactoryDispatcher import ProductDispatcher
 from App.special_dtml import HTMLFile
 from DateTime import DateTime
@@ -65,13 +63,11 @@ from OFS.CopySupport import CopyError
 from OFS.CopySupport import _cb_decode
 from OFS.CopySupport import _cb_encode
 from OFS.role import RoleManager
-from TreeDisplay.TreeTag import encode_str
 from webdav.NullResource import LockNullResource
 from zExceptions import BadRequest
 from zExceptions import Forbidden
 from zExceptions import NotFound
 from zExceptions import Unauthorized
-from ZPublisher.HTTPResponse import HTTPResponse
 
 from .exceptions import DeleteError
 from .exceptions import RenameError
@@ -189,18 +185,17 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
     """Object representing a directory in the local file system."""
 
     meta_type = 'Local Directory'
+    zmi_icon = 'far fa-folder text-danger'
 
     # Set to True and the ZMI becomes too sluggish
     isPrincipiaFolderish = 0
     manage_addProduct = ProductDispatcher()
 
     manage_main = HTMLFile('dtml/main', globals())
-    index_html = HTMLFile('dtml/methodBrowse', globals())
     manage_uploadForm = HTMLFile('dtml/methodUpload', globals())
 
     manage_options = (
         {'label': 'Contents', 'action': 'manage_main'},
-        {'label': 'View', 'action': 'index_html'},
         {'label': 'Upload', 'action': 'manage_uploadForm'},
         )
 
@@ -211,13 +206,12 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
     security.declareProtected('FTP access', 'manage_FTPstat',  # NOQA
                               'manage_FTPget', 'manage_FTPlist')
 
-    def __init__(self, id, basepath, root, tree_view, catalog, _type_map,
+    def __init__(self, id, basepath, root, catalog, _type_map,
                  _icon_map, file_filter=None):
         """LocalDirectory __init__"""
         self.id = id
         self.basepath = self._local_path = basepath
         self.root = root
-        self.tree_view = self.isPrincipiaFolderish = tree_view
         self.catalog = catalog
         self._type_map = _type_map
         self._icon_map = _icon_map
@@ -303,8 +297,8 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         ob = None
         path = self._getpath(id)
         if (os.path.isdir(path)):
-            ob = LocalDirectory(id, path, self.root or self, self.tree_view,
-                                self.catalog, self._type_map, self._icon_map)
+            ob = LocalDirectory(id, path, self.root or self, self.catalog,
+                                self._type_map, self._icon_map)
         elif (os.path.isfile(path)):
             try:
                 with open(path, 'rb') as f:
@@ -383,9 +377,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                             'the requested %s ("%s").' % (t, id))
         except OSError:
             if t == 'directory' and os.listdir(path):
-                raise DeleteError(HTTPResponse()._error_html(
-                    'DeleteError',
-                    'The directory "%s" is not empty.' % id))
+                raise DeleteError('The directory "%s" is not empty.' % id)
             raise
 
     def _copyOb(self, id, ob):
@@ -428,23 +420,26 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         path = os.path.join(*parts)
         fullpath = os.path.join(self.basepath, path)
         if os.path.exists(fullpath):
-            if REQUEST:
-                return MessageDialog(
-                        title='OK',
-                        message='The directory already exists.',
-                        action=action)
+            if REQUEST is not None:
+                REQUEST.set('manage_tabs_message',
+                            'Directory %s already exists.' % path)
+                return self.manage_uploadForm(self, REQUEST)
+
         else:
             try:
                 os.makedirs(fullpath)
             except PermissionError:
-                raise Forbidden('Sorry, you do not have permission to write '
-                                'to this directory.')
+                msg = 'You do not have permission to write to this directory.'
+                if REQUEST is not None:
+                    REQUEST.set('manage_tabs_message', msg)
+                    return self.manage_uploadForm(self, REQUEST)
+                else:
+                    raise Forbidden(msg)
 
-            if REQUEST:
-                return MessageDialog(
-                        title='Success!',
-                        message='The directory has been created.',
-                        action=action)
+            if REQUEST is not None:
+                msg = 'Directory %s has been created.' % path
+                REQUEST.set('manage_tabs_message', msg)
+                return self.manage_main(self, REQUEST, update_menu=1)
 
     def manage_upload(self, file, id='', action='manage_workspace',
                       REQUEST=None):
@@ -476,11 +471,13 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
         try:
             self._checkId(id, 1)
-        except Exception:
-            raise UploadError(MessageDialog(
-                      title='Invalid Id',
-                      message=sys.exc_value,
-                      action='manage_main'))
+        except BadRequest as exc:
+            if REQUEST is not None:
+                REQUEST.set('manage_tabs_message', str(exc))
+                return self.manage_uploadForm(self, REQUEST)
+            else:
+                raise UploadError(str(exc))
+
         path = self._getpath(id)
         if os.path.exists(path):
             self.manage_overwrite(file, path, REQUEST)
@@ -488,15 +485,9 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             self._write_file(file, path)
 
         if REQUEST:
-            if action == 'index_fs':
-                msg = 'Your%20file%20has%20been%20uploaded'
-                path = '%s/index_fs?portal_status_message=%s'
-                REQUEST['RESPONSE'].redirect(path % (self.absolute_url(), msg))
-            else:
-                return MessageDialog(
-                    title='Success!',
-                    message='Your file has been uploaded.',
-                    action=action)
+            REQUEST.set('manage_tabs_message',
+                        'File %s has been uploaded.' % id)
+            return self.manage_main(self, REQUEST, update_menu=1)
 
     def manage_overwrite(self, file, path, REQUEST=None):
         """Overwrite a local file."""
@@ -510,28 +501,22 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
     def manage_renameObject(self, id, new_id, REQUEST=None):
         """Rename a file or subdirectory."""
+        error_msg = ''
         try:
             self._checkId(new_id)
-        except Exception:
-            raise RenameError(MessageDialog(
-                      title='Invalid Id',
-                      message=sys.exc_value,
-                      action='manage_main'))
-        f = self._getpath(id)
-        t = self._getpath(new_id)
-        try:
+            f = self._getpath(id)
+            t = self._getpath(new_id)
             os.rename(f, t)
+        except BadRequest as exc:
+            error_msg = str(exc)
         except PermissionError:
-            if os.path.isdir(f):
-                t = 'directory'
-            else:
-                t = 'file'
-            raise RenameError(HTTPResponse()._error_html(
-                'RenameError'
-                'Sorry, you do not have permission to rename '
-                'the requested %s ("%s").' % (t, id)))
+            error_msg = 'You do not have permission to rename %s' % id
+
+        if error_msg and REQUEST is None:
+            raise RenameError(error_msg)
 
         if REQUEST is not None:
+            REQUEST.set('manage_tabs_message', error_msg)
             return self.manage_main(self, REQUEST, update_menu=1)
 
     def manage_cutObjects(self, ids, REQUEST=None):
@@ -638,20 +623,27 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
     def manage_delObjects(self, ids=[], REQUEST=None):
         """Delete files or subdirectories."""
+        notfound = []
         if isinstance(ids, str):
             ids = [ids]
         if not ids:
-            return MessageDialog(title='No items specified',
-                                 message='No items were specified!',
-                                 action='manage_main')
-        while ids:
-            id = ids[-1]
+            if REQUEST is not None:
+                REQUEST.set('manage_tabs_message', 'No items specified')
+                return self.manage_main(self, REQUEST)
+
+        for id in ids:
             path = self._getpath(id)
             if not os.path.exists(path):
-                raise BadRequest('%s does not exist' % ids[-1])
-            self._delObject(id)
-            del ids[-1]
+                notfound.append(id)
+            else:
+                self._delObject(id)
+
         if REQUEST is not None:
+            if notfound:
+                msg = 'Some items were not found: %s' % ', '.join(notfound)
+            else:
+                msg = 'Items deleted.'
+            REQUEST.set('manage_tabs_message', msg)
             return self.manage_main(self, REQUEST, update_menu=1)
 
     def fileIds(self, spec=None):
@@ -780,24 +772,6 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             for id in self._ids():
                 a((id, g(id)))
         return r
-
-    def tpValues(self):
-        """Returns a list of the folder's sub-folders, used by tree tag."""
-        r = []
-        try:
-            for id in self._ids():
-                o = self._safe_getOb(id)
-                try:
-                    if o.isPrincipiaFolderish:
-                        r.append(o)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        return r
-
-    def tpId(self):
-        return encode_str(self.serverPath())
 
     def serverPath(self):
         """Return the full path of the directory object relative to the
@@ -1116,6 +1090,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
     """Object that creates Zope objects from files in the local file system."""
 
     meta_type = 'Local File System'
+    zmi_icon = 'far fa-hdd text-danger'
 
     manage_options = (
         ({'label': 'Contents', 'action': 'manage_main'},
@@ -1127,7 +1102,6 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
 
     __ac_permissions__ = (
         ('View', ('',)),
-        ('View Directory Index', ('index_html',)),
         ('View management screens',
             ('manage', 'manage_main')),
         ('Change Local File System properties',
@@ -1158,14 +1132,12 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         {'id': 'type_map', 'type': 'lines', 'mode': 'w'},
         {'id': 'icon_map', 'type': 'lines', 'mode': 'w'},
         {'id': 'catalog', 'type': 'boolean', 'mode': 'w'},
-        {'id': 'tree_view', 'type': 'boolean', 'mode': 'w'},
         {'id': 'file_filter', 'type': 'string', 'mode': 'w'},
     )
 
     default_document = 'index.html default.html'
     username = _share = ''
     _connected = 0
-    tree_view = 0  # was 1 - changed because it can slow ZMI down quite a bit
     isPrincipiaFolderish = 1  # leaving this at one though
     catalog = 0
     root = None
@@ -1179,8 +1151,8 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
 
     def __init__(self, id, title, basepath, username, password):
         """LocalFS __init__"""
-        LocalDirectory.__init__(self, id, basepath, self, self.tree_view,
-                                self.catalog, self._type_map, self._icon_map,
+        LocalDirectory.__init__(self, id, basepath, self, self.catalog,
+                                self._type_map, self._icon_map,
                                 self.file_filter)
         self.title = title
 
@@ -1229,7 +1201,6 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
                 else:
                     self._share = ''
             self.password = ''
-        self.isPrincipiaFolderish = self.tree_view
         message = 'Saved changes.'
         return self.manage_propertiesForm(self, REQUEST,
                                           manage_tabs_message=message,
@@ -1264,7 +1235,6 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
                 else:
                     self._share = ''
             self.password = ''
-        self.isPrincipiaFolderish = self.tree_view
 
     def _connect(self):
         """_connect"""

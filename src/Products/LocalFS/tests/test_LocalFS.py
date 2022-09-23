@@ -120,7 +120,6 @@ class LocalFSFunctionalTests(FunctionalTestCase):
         req.form['username'] = 'user1'
         req.form['password'] = 'pass1'
         req.form['default_document'] = 'my.html index.jsp'
-        req.form['tree_view'] = 1
         req.form['catalog'] = 1
         req.form['type_map'] = ['',
                                 '.dtml text/html DTMLMethod',
@@ -133,7 +132,6 @@ class LocalFSFunctionalTests(FunctionalTestCase):
         self.assertEqual(lfs.title, 'New Title')
         self.assertEqual(lfs.basepath, '/tmp')
         self.assertEqual(lfs.default_document, 'my.html index.jsp')
-        self.assertEqual(lfs.tree_view, 1)
         self.assertEqual(lfs.catalog, 1)
         self.assertEqual(lfs._type_map,
                          {'.dtml': ('text/html', 'DTMLMethod'),
@@ -174,7 +172,6 @@ class LocalFSFunctionalTests(FunctionalTestCase):
                                     username='user1',
                                     password='pass1',
                                     default_document='my.html index.jsp',
-                                    tree_view=1,
                                     catalog=1,
                                     type_map=new_type_map,
                                     icon_map=new_icon_map,
@@ -183,7 +180,6 @@ class LocalFSFunctionalTests(FunctionalTestCase):
         self.assertEqual(lfs.title, 'New Title')
         self.assertEqual(lfs.basepath, '/tmp')
         self.assertEqual(lfs.default_document, 'my.html index.jsp')
-        self.assertEqual(lfs.tree_view, 1)
         self.assertEqual(lfs.catalog, 1)
         self.assertEqual(lfs._type_map,
                          {'.dtml': ('text/html', 'DTMLMethod'),

@@ -3,7 +3,13 @@ Change log
 
 2.0 (unreleased)
 -----------------
-- package cleanup and common test configuration
+- Add compatibility with Python 3 and Zope 4 and 5.
+
+- Remove compatibility with Zope 2.
+
+- Clean up package configuration.
+
+- Remove unused or broken features.
 
 
 1.14 (2018-11-12)
