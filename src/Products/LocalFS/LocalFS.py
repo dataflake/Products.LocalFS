@@ -998,7 +998,7 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
     def _getDisplaySize(self):
         """Return the size of a file or directory formatted for display."""
         size = self.size
-        if size is None:
+        if size in (0, None):
             return '-' * 5
         if size == -1:
             return _unknown
