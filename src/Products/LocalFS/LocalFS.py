@@ -55,6 +55,8 @@ import App
 import OFS
 import Persistence
 from AccessControl.SecurityManagement import getSecurityManager
+from Acquisition import aq_inner
+from Acquisition import aq_parent
 from App.Common import absattr
 from App.FactoryDispatcher import ProductDispatcher
 from App.special_dtml import HTMLFile
@@ -197,6 +199,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
     manage_options = (
         {'label': 'Contents', 'action': 'manage_main'},
         {'label': 'Upload', 'action': 'manage_uploadForm'},
+        {'label': 'View', 'action': ''},
         )
 
     icon = 'misc_/OFSP/Folder_icon.gif'
@@ -440,6 +443,13 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                 msg = 'Directory %s has been created.' % path
                 REQUEST.set('manage_tabs_message', msg)
                 return self.manage_main(self, REQUEST, update_menu=1)
+
+    def index_html(self, REQUEST, RESPONSE):
+        """ Show the default page if it exists, otherwise acquire """
+        default_document = self.defaultDocument()
+        if default_document is None:
+            return aq_parent(aq_inner(self)).index_html(REQUEST, RESPONSE)
+        return default_document(REQUEST, RESPONSE)
 
     def manage_upload(self, file, id='', action='manage_workspace',
                       REQUEST=None):
