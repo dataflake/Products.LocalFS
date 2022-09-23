@@ -1,8 +1,8 @@
 Change log
 ==========
 
-2.0 (unreleased)
------------------
+2.0b1 (2022-09-23)
+------------------
 - Add compatibility with Python 3 and Zope 4 and 5.
 
 - Remove compatibility with Zope 2.
