@@ -989,7 +989,7 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
         Return None if the path refers to a directory."""
         path = self.path
         if (os.path.isdir(path)):
-            return None
+            return 0
         try:
             return os.stat(path)[stat.ST_SIZE]
         except Exception:

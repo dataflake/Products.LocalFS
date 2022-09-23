@@ -72,10 +72,6 @@ Controls
 
 * `Import/Export` -- Imports or exports a Zope object.
 
-* `Available Objects` -- Selects a type of object to add.
-
-* `Add` -- Adds an object specified in `Available Objects`.
-
 * `Select All (Deselect All)` -- Toggles between selecting and
   deselecting each item currently displayed in the contents view.
   **Note: This control will only appear if your browser is
@@ -152,8 +148,6 @@ System object.
       areas having nothing to do with cataloging. Enable this option only
       if necessary.
 
-* `tree_view` -- Controls whether the Local File System object will be displayed
-      in the management tree and other instances of the <dtml-tree> tag.
 
 Property types
 ~~~~~~~~~~~~~~
@@ -251,12 +245,14 @@ Controls
   settings` link. 
  
 
-Upload tab: Upload local files
-------------------------------
+Upload tab: Upload local files and create directories
+-----------------------------------------------------
 This page allows you to upload files from the web browser to the Zope 
 server's file system.
 
 Controls
 ~~~~~~~~
-* `File` -- Path to the file to add.
+* `Browse` -- Open a file browser to select a file.
 * `Add` -- Add the selected file.
+* `Directory Name` -- Name for the directory you would like to create.
+* `Create Directory` -- Create the new directory.

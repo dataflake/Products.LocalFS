@@ -17,7 +17,11 @@ Local File System product
 
 This product allows you to serve files and browse directories from the 
 local file system (or network shares on Windows platforms). It also
-allows you to upload files to the file system trough a browser and FTP.
+allows you to upload files to the file system through a browser or WebDAV.
+
+**WARNING**: Allowing any type of write access to a folder on disk straight
+from a web application represents a security risk. Please secure your
+application before using this package.
  
 The documentation for this product is maintained by Sphinx
 using sources underneath the ``docs`` folder.

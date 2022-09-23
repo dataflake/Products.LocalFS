@@ -11,6 +11,8 @@ Change log
 
 - Remove unused or broken features.
 
+- Updated the built-in documentation.
+
 
 1.14 (2018-11-12)
 -----------------
