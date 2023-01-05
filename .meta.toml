@@ -2,18 +2,27 @@
 # https://github.com/zopefoundation/meta/tree/master/config/zope-product
 [meta]
 template = "zope-product"
-commit-id = "b5df3766ff8923477f3d24729b19504f0c401a2e"
+commit-id = "d03ad585"
 
 [python]
 with-windows = false
 with-pypy = false
 with-future-python = false
-with-legacy-python = true
 with-docs = true
 with-sphinx-doctests = false
+with-macos = false
 
 [tox]
 use-flake8 = true
+additional-envlist = [
+    "py27",
+    "py35",
+    "py36",
+    ]
+testenv-commands-pre = [
+    "py27,py35: {envbindir}/buildout -nc {toxinidir}/buildout4.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
+    "!py27-!py35: {envbindir}/buildout -nc {toxinidir}/buildout.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
+    ]
 
 [manifest]
 additional-rules = [
@@ -25,3 +34,10 @@ additional-rules = [
 
 [coverage]
 fail-under = 80
+
+[github-actions]
+additional-config = [
+    "- [\"2.7\",   \"py27\"]",
+    "- [\"3.5\",   \"py35\"]",
+    "- [\"3.6\",   \"py36\"]",
+    ]

@@ -4,6 +4,8 @@ Change log
 2.0 (unreleased)
 ----------------
 
+- Add support for Python 3.11.
+
 
 2.0b1 (2022-09-23)
 ------------------
