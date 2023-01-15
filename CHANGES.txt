@@ -4,6 +4,8 @@ Change log
 2.1 (unreleased)
 ----------------
 
+- Fix tests for Python 3.6.
+
 
 2.0 (2023-01-05)
 ----------------

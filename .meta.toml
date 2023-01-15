@@ -2,7 +2,7 @@
 # https://github.com/zopefoundation/meta/tree/master/config/zope-product
 [meta]
 template = "zope-product"
-commit-id = "d03ad585"
+commit-id = "4f0f7596"
 
 [python]
 with-windows = false
@@ -20,8 +20,8 @@ additional-envlist = [
     "py36",
     ]
 testenv-commands-pre = [
-    "py27,py35: {envbindir}/buildout -nc {toxinidir}/buildout4.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
-    "!py27-!py35: {envbindir}/buildout -nc {toxinidir}/buildout.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
+    "py27,py35,py36: {envbindir}/buildout -nc {toxinidir}/buildout4.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
+    "!py27-!py35-!py36: {envbindir}/buildout -nc {toxinidir}/buildout.cfg buildout:directory={envdir} buildout:develop={toxinidir} install test",
     ]
 
 [manifest]
