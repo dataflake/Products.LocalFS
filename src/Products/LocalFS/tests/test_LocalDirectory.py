@@ -81,7 +81,7 @@ class LocalDirectoryAndFileTests(unittest.TestCase, FilesystemTestSupport):
 
     def tearDown(self):
         self.cleanup_files()
-        super(LocalDirectoryAndFileTests, self).tearDown()
+        super().tearDown()
 
     def test_instantiation(self):
         lfs = self._makeSimple()
@@ -313,7 +313,7 @@ class LocalDirectoryFunctionalTests(FunctionalTestCase, FilesystemTestSupport):
 
     def tearDown(self):
         self.cleanup_files()
-        super(LocalDirectoryFunctionalTests, self).tearDown()
+        super().tearDown()
 
     def test_manage_upload(self):
         self.login(ADMIN_USER)

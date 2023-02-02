@@ -1,8 +1,6 @@
 from io import BytesIO
 from io import StringIO
 
-import six
-
 from OFS.Image import File
 from OFS.Image import Image
 from OFS.Image import Pdata
@@ -86,18 +84,3 @@ class Sdata(Pdata):
     def __bytes__(self):
         self.file.seek(self.offset, 0)
         return self.file.read()
-
-    if six.PY2:
-        def __getslice__(self, i, j):
-            size = min(BUFFER_SIZE, len(self))
-            if i < 0:
-                i = max(i + size, 0)
-            j = min(j, size)
-            if j < 0:
-                j = max(j + size, 0)
-            if i >= j:
-                return ''
-            self.file.seek(self.offset+i, 0)
-            return self.file.read(j-i)
-
-        __str__ = __bytes__

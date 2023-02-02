@@ -53,13 +53,6 @@ from Products.PythonScripts.PythonScript import PythonScript
 from ZODB.utils import p64
 
 
-try:
-    import ZServer  # NOQA: F401 unused import
-    HAVE_FTP = True
-except ImportError:
-    HAVE_FTP = False
-
-
 _iswin32 = (sys.platform == 'win32' or
             'test' in os.environ.get('_', '') or
             os.environ.get('TOX_ENV_DIR', ''))
@@ -258,7 +251,7 @@ class Wrapper:
     def __repr__(self):
         """ __repr__ """
         c = self.__class__.__bases__[-1].__name__
-        return '<%s ObjectWrapper instance at %8X>' % (c, id(self))
+        return f'<{c} ObjectWrapper instance at {id(self):8X}>'
 
     def wl_lockmapping(self, killinvalids=0, create=0):
         """ Overwrite the default method of LockableItem """
@@ -334,7 +327,7 @@ def _wrap_method(c, name):
         baseargs.append(a[0])
         del a[0]
     for i in range(len(a)):
-        arglist.append('%s=%s' % (a[i], repr(d[i])))
+        arglist.append(f'{a[i]}={d[i]!r}')
         baseargs.append(a[i])
     arglist = '(' + ','.join(arglist) + ')'
     baseargs = '(' + ','.join(baseargs) + ')'
