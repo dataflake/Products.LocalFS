@@ -1,5 +1,3 @@
-__version__ = '2.1.dev0'
-
 import os
 
 from setuptools import find_packages
@@ -17,7 +15,7 @@ def _read(name):
 
 
 setup(name=NAME,
-      version=__version__,
+      version='3.0.dev0',
       license='BSD License',
       description='The Local File System product',
       long_description=_read('README.rst'),
