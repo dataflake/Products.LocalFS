@@ -22,5 +22,10 @@ additional-rules = [
     "recursive-include src *.gitkeep",
     ]
 
+[check-manifest]
+additional-ignores = [
+    "docs/_build/html/_static/*",
+    ]
+
 [coverage]
 fail-under = 80

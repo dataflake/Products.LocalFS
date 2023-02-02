@@ -1,20 +1,32 @@
+##############################################################################
+#
+# Copyright (c) 1999 Jonothan Farr and Contributors. All Rights Reserved.
+#
+# This software is subject to the provisions of the Zope Public License,
+# Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
+# THIS SOFTWARE IS PROVIDED "AS IS" AND ANY AND ALL EXPRESS OR IMPLIED
+# WARRANTIES ARE DISCLAIMED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF TITLE, MERCHANTABILITY, AGAINST INFRINGEMENT, AND FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+##############################################################################
+
 import os
 
 from setuptools import find_packages
 from setuptools import setup
 
 
-NAME = 'Products.LocalFS'
 here = os.path.abspath(os.path.dirname(__file__))
 _boundary = '\n' + ('-' * 60) + '\n\n'
 
 
 def _read(name):
-    f = open(os.path.join(here, name))
-    return f.read()
+    with open(os.path.join(here, name)) as fp:
+        return fp.read()
 
 
-setup(name=NAME,
+setup(name='Products.LocalFS',
       version='3.1.dev0',
       license='BSD License',
       description='The Local File System product',
@@ -41,10 +53,11 @@ setup(name=NAME,
       author_email='jfarr@speakeasy.org',
       maintainer='Jens Vagelpohl',
       maintainer_email='jens@dataflake.org',
-      url='https://github.com/dataflake/%s' % NAME,
+      url='https://github.com/dataflake/Products.LocalFS',
       project_urls={
-          'Issue Tracker': 'https://github.com/dataflake/%s/issues' % NAME,
-          'Sources': 'https://github.com/dataflake/%s' % NAME,
+          'Issue Tracker': ('https://github.com/dataflake/'
+                            'Products.LocalFS/issues'),
+          'Sources': 'https://github.com/dataflake/Products.LocalFS',
       },
       packages=find_packages('src'),
       include_package_data=True,
@@ -54,10 +67,10 @@ setup(name=NAME,
       python_requires='>=3.7',
       install_requires=[
         'setuptools',
-        'Zope',
+        'Zope >= 5',
         'Products.PythonScripts',
         ],
       extras_require={
-          'docs': ['Sphinx'],
+          'docs': ['Sphinx', 'sphinx-rtd-theme', 'pkginfo'],
         },
       )
