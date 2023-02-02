@@ -38,16 +38,11 @@
 #
 ##############################################################################
 """Local File System product"""
-__version__ = '1.12'
-__doc__ = """Local File System product"""
 
 import glob
-import marshal  # sbk
 import os
 import stat
-
-import six
-from six.moves.urllib.parse import quote
+from urllib.parse import quote
 
 import AccessControl
 import Acquisition
@@ -74,7 +69,6 @@ from zExceptions import Unauthorized
 from .exceptions import DeleteError
 from .exceptions import RenameError
 from .exceptions import UploadError
-from .utils import HAVE_FTP
 from .utils import _create_ob
 from .utils import _get_content_type
 from .utils import _iconmap2list
@@ -204,10 +198,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
 
     icon = 'misc_/OFSP/Folder_icon.gif'
 
-    security = AccessControl.ClassSecurityInfo()  # sbk
-
-    security.declareProtected('FTP access', 'manage_FTPstat',  # NOQA
-                              'manage_FTPget', 'manage_FTPlist')
+    security = AccessControl.ClassSecurityInfo()
 
     def __init__(self, id, basepath, root, catalog, _type_map,
                  _icon_map, file_filter=None):
@@ -224,7 +215,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         """ bobo_traverse """
         method = REQUEST.get('REQUEST_METHOD', 'GET').upper()
         try:
-            # FTP - PUT
+            # WebDAV PUT
             if method not in ('GET', 'POST', 'HEAD'):
                 return LockNullResource(name).__of__(self)
         except Exception:
@@ -581,7 +572,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         try:
             cp = _cb_decode(cp)
         except Exception as e:
-            six.raise_from(CopyError('Clipboard Error'), e)
+            raise CopyError('Clipboard Error') from e
 
         oblist = []
         m = FileMoniker()
@@ -682,7 +673,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         # sort that directories come first
         res = []
         for v in r:
-            s = '%s%s' % ((v.type != 'directory'), v.id)
+            s = '{}{}'.format((v.type != 'directory'), v.id)
             res.append((s, v))
 
         return [x[1] for x in sorted(res)]
@@ -805,7 +796,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         spec = self.REQUEST.get('spec', None)
         if (spec is not None):
             if isinstance(spec, str):
-                url = '%s?spec=%s' % (url, quote(spec))
+                url = f'{url}?spec={quote(spec)}'
             else:
                 query = []
                 for patt in spec:
@@ -835,7 +826,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         return DateTime(t)
 
     #
-    #  FTP and WebDAV Support - sbk
+    #  WebDAV Support
     #
 
     @security.private
@@ -860,51 +851,13 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             ob = File(name, '', body, content_type=typ)
         return ob
 
-    if HAVE_FTP:
-
-        def manage_FTPlist(self, REQUEST):
-            """Directory listing for FTP"""
-            out = ()
-            files = list(self.fileItems())
-            is_root = getattr(self,
-                              'isTopLevelPrincipiaApplicationObject',
-                              None)
-            try:
-                if not is_root and self.isTopLevelPrincipiaApplicationObject:
-                    files.insert(0, ('..', self.aq_parent))
-            except Exception:
-                pass
-
-            for k, v in files:
-                try:
-                    stat = marshal.loads(v.manage_FTPstat(REQUEST))
-                except Exception:
-                    stat = None
-                if stat is not None:
-                    out = out + ((k, stat),)
-            return marshal.dumps(out)
-
-        def manage_FTPstat(self, REQUEST):
-            """Psuedo stat used for FTP listings"""
-            # mode = 0040000 | 0770
-            mode = 33272 | 0o0770
-            mtime = self.bobobase_modification_time().timeTime()
-            owner = group = 'Zope'
-            return marshal.dumps((mode, 0, 0, 1, owner, group, 0, mtime, mtime,
-                                  mtime))
-
 
 class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
 
     """Object representing a file in the local file system."""
 
     meta_type = 'Local File'
-
     security = AccessControl.ClassSecurityInfo()
-
-    security.declareProtected('FTP access', 'manage_FTPstat',  # NOQA
-                              'manage_FTPget', 'manage_FTPlist', 'PUT',
-                              'manage_FTPput')
 
     def __init__(self, parent, id, path, spec):
         """LocalFile __init__"""
@@ -966,7 +919,7 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
             ob = OFS.Image.File(name, name, data)
             _set_content_type(ob, t, data)
             return ob.content_type
-        except EnvironmentError:
+        except OSError:
             return 'application/octet-stream'
 
     def _getIcon(self):
@@ -1027,10 +980,10 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
         t = self.mtime
         if t is None:
             return _unknown
-        return '%s %s' % (t.Time(), t.Date())
+        return f'{t.Time()} {t.Date()}'
 
     #
-    # FTP and WebDAV Support - sbk
+    # WebDAV Support
     #
 
     def PUT(self, REQUEST, RESPONSE):
@@ -1041,31 +994,6 @@ class LocalFile(OFS.SimpleItem.Item, Acquisition.Implicit):
         self.ZCacheable_invalidate()
         RESPONSE.setStatus(204)
         return RESPONSE
-
-    manage_FTPput = PUT
-
-    def manage_FTPget(self):
-        """Get source for FTP download"""
-        self.REQUEST.RESPONSE.setHeader('Content-Type', self.content_type)
-        return self.read()
-
-    getSize = get_size
-
-    if HAVE_FTP:
-
-        def manage_FTPstat(self, REQUEST):
-            """Psuedo stat used for FTP listings"""
-            size = self._getSize()
-            # mode = 0100000 | 0660
-            mode = 33152 | 0o0660
-            if self.type == 'directory':
-                size = 0
-                # mode = 0040000 | 0770
-                mode = 33272 | 0o0770
-            mtime = self.bobobase_modification_time().timeTime()
-            owner = group = 'Zope'
-            return marshal.dumps((mode, 0, 0, 1, owner, group, size, mtime,
-                                  mtime, mtime))
 
 
 class FileMoniker:
@@ -1189,7 +1117,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         username = self.username
         password = self.password
 
-        super(LocalFS, self).manage_editProperties(REQUEST)
+        super().manage_editProperties(REQUEST)
 
         if not self.file_filter.strip():
             self.file_filter = None
@@ -1227,7 +1155,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         username = self.username
         password = self._password
 
-        super(LocalFS, self).manage_changeProperties(REQUEST=REQUEST, **kw)
+        super().manage_changeProperties(REQUEST=REQUEST, **kw)
 
         if self.type_map != type_map:
             self._type_map = _list2typemap(self.type_map)

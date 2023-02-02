@@ -67,7 +67,7 @@ class LocalFSTests(unittest.TestCase, FilesystemTestSupport):
 
     def tearDown(self):
         self.cleanup_files()
-        super(LocalFSTests, self).tearDown()
+        super().tearDown()
 
     def test_instantiation(self):
         lfs = self._makeSimple()

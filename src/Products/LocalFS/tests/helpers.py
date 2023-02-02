@@ -57,7 +57,7 @@ class FunctionalTestCase(ZopeTestCase):
     _setup_fixture = True
 
     def _setup(self):
-        super(FunctionalTestCase, self)._setup()
+        super()._setup()
 
         # Add an admin user
         uf = self.folder.acl_users

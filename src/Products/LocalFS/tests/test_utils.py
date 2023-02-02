@@ -120,7 +120,7 @@ class UtilsTests(unittest.TestCase):
         t_list = _typemap2list(_types)
         self.assertIsInstance(t_list, list)
         self.assertEqual(set(_types.keys()),
-                         set([x.split()[0] for x in t_list]))
+                         {x.split()[0] for x in t_list})
 
         t_map = {'.dtml': ('text/html', 'DTMLMethod'),
                  '.foo': 'Foobar'}
@@ -148,7 +148,7 @@ class UtilsTests(unittest.TestCase):
         i_list = _iconmap2list(_icons)
         self.assertIsInstance(i_list, list)
         self.assertEqual(set(_icons.keys()),
-                         set([x.split()[0] for x in i_list]))
+                         {x.split()[0] for x in i_list})
 
     def test__set_timestamp(self):
         from ..utils import _set_timestamp

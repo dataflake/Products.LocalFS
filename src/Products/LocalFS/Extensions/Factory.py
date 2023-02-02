@@ -1,4 +1,3 @@
-
 class XMLDocumentFactory:
 
     def __call__(self, id, file):
