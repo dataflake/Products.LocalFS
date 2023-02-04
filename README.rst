@@ -4,6 +4,10 @@
 .. image:: https://coveralls.io/repos/github/dataflake/Products.LocalFS/badge.svg
    :target: https://coveralls.io/github/dataflake/Products.LocalFS
 
+.. image:: https://readthedocs.org/projects/productslocalfs/badge/?version=latest
+   :target: https://productslocalfs.readthedocs.io
+   :alt: Documentation Status
+
 .. image:: https://img.shields.io/pypi/v/Products.LocalFS.svg
    :target: https://pypi.python.org/pypi/Products.LocalFS
    :alt: Current version on PyPI
