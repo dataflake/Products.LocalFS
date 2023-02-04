@@ -12,8 +12,10 @@
    :target: https://pypi.org/project/Products.LocalFS
    :alt: Supported Python versions
 
-Local File System product
-==========================
+
+==================
+ Products.LocalFS
+==================
 
 This product allows you to serve files and browse directories from the 
 local file system (or network shares on Windows platforms). It also

@@ -1,52 +1,66 @@
 Development
 ===========
 
-.. highlight:: console
-
-Getting the source code
------------------------
-The source code is maintained on GitHub. To check out the main branch::
-
-  $ git clone https://github.com/MineralWare/Products.LocalFS.git
-
-You can also browse the code online at
-https://github.com/MineralWare/Products.LocalFS
-
 Bug tracker
 -----------
 For bug reports, suggestions or questions please use the
 GitHub issue tracker at
 https://github.com/zopefoundation/Products.LocalFS/issues.
 
-Setting up a development sandbox and testing
---------------------------------------------
-Once you've obtained a source checkout, you can follow these
-instructions to perform various development tasks.
-All development requires that you create a virtual envoronment and run the
-buildout from the package root directory::
 
-  $ cd Products.LocalFS
-  $ python3 -m venv .
-  $ bin/pip install -U pip wheel
-  $ bin/pip install "zc.buildout>=3.0.0rc3" tox twine
-  $ bin/buildout
+Getting the source code
+-----------------------
+The source code is maintained on GitHub. To check out the main branch:
 
-Once you have a buildout, the tests can be run as follows::
+.. code-block:: console
 
-  $ bin/test
+  $ git clone https://github.com/MineralWare/Products.LocalFS.git
 
-To run tests for all supported Python versions, code coverage and a
-PEP-8 coding style checker, you can use ``tox`` after completing the
-buildout step above::
+You can also browse the code online at
+https://github.com/MineralWare/Products.LocalFS
 
-  $ bin/tox
+
+Preparing the development sandbox
+---------------------------------
+The following steps only need to be done once to install all the tools and
+scripts needed for building, packaging and testing. First, create a
+:term:`Virtual environment`. The example here uses Python 3.11, but any Python
+version supported by this package will work. Then install all the required
+tools:
+
+.. code-block:: console
+
+    $ cd Products.LocalFS
+    $ python3.11 -m venv .
+    $ bin/pip install -U pip wheel
+    $ bin/pip install -U setuptools zc.buildout tox twine
+
+
+Running the tests
+-----------------
+You can use ``tox`` to run the unit and integration tests in this package. The
+shipped ``tox`` configuration can run the tests for all supported platforms.
+You can read the entire long list of possible options on the
+`tox CLI interface documentation page
+<https://tox.wiki/en/latest/cli_interface.html>`_, but the following examples
+will get you started:
+
+.. code-block:: console
+
+    $ bin/tox -l       # List all available environments
+    $ bin/tox -pall    # Run tests for all environments in parallel
+    $ bin/tox -epy311  # Run tests on Python 3.11 only
+    $ bin/tox -elint   # Run package sanity checks and lint the code
+
 
 Building the documentation
 --------------------------
-The Sphinx documentation is built in the ``docs`` subfolder after you have run
-the buildout, which installs the required tools::
+``tox`` is also used to build the :term:`Sphinx`-based documentation. The
+input files are in the `docs` subfolder and the documentation build step will
+compile them to HTML. The output is stored in `docs/_build/html/`:
 
-  $ cd docs
-  $ make html
+.. code-block:: console
 
-The finished HTML files are under `docs/_build/html`.
+    $ bin/tox -edocs
+
+If the documentation contains doctests they are run as well.

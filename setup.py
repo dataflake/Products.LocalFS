@@ -55,6 +55,7 @@ setup(name='Products.LocalFS',
       maintainer_email='jens@dataflake.org',
       url='https://github.com/dataflake/Products.LocalFS',
       project_urls={
+          'Documentation': 'https://productslocalfs.readthedocs.io/',
           'Issue Tracker': ('https://github.com/dataflake/'
                             'Products.LocalFS/issues'),
           'Sources': 'https://github.com/dataflake/Products.LocalFS',
@@ -71,6 +72,6 @@ setup(name='Products.LocalFS',
         'Products.PythonScripts',
         ],
       extras_require={
-          'docs': ['Sphinx', 'sphinx-rtd-theme', 'pkginfo'],
+          'docs': ['Sphinx', 'sphinx_rtd_theme', 'pkginfo'],
         },
       )

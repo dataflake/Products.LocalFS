@@ -1,12 +1,4 @@
-.. _index:
-
-=============
-Documentation
-=============
-
-This product allows you to serve files and browse directories from the
-local file system (or network shares on Windows platforms). It also
-allows you to upload files to the file system trough a browser or WebDAV.
+.. include:: ../README.rst
 
 
 Narrative documentation
@@ -16,14 +8,19 @@ Narrative documentation explaining how to use :mod:`Products.LocalFS`.
 .. toctree::
     :maxdepth: 2
 
-    development
+    installation
     usage
+    development
     changes
+
+
+Support
+-------
+If you need commercial support for this software package, please
+visit `https://www.zetwork.com <https://www.zetwork.com/>`_.
 
 
 Indices and tables
 ------------------
 * :ref:`genindex`
-* :ref:`search`
 * :ref:`glossary`
-
