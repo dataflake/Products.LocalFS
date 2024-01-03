@@ -27,7 +27,7 @@ def _read(name):
 
 
 setup(name='Products.LocalFS',
-      version='3.1.dev0',
+      version='3.1',
       license='BSD License',
       description='The Local File System product',
       long_description=_read('README.rst'),
