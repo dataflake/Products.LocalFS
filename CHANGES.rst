@@ -5,6 +5,10 @@ Change log
 ----------------
 
 
+- Add support for Python 3.13, 3.14.
+
+- Drop support for Python 3.7, 3.8, 3.9.
+
 3.1 (2024-01-03)
 ----------------
 

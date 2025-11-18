@@ -104,7 +104,7 @@ class Sdata(Pdata):
             if key > size:
                 return b''
 
-            self.file.seek(self.offset+key, 0)
+            self.file.seek(self.offset + key, 0)
             return self.file.read(1)
 
     @property

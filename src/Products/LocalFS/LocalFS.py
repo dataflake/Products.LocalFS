@@ -194,7 +194,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         {'label': 'Contents', 'action': 'manage_main'},
         {'label': 'Upload', 'action': 'manage_uploadForm'},
         {'label': 'View', 'action': ''},
-        )
+    )
 
     icon = 'misc_/OFSP/Folder_icon.gif'
 
@@ -396,7 +396,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
                 outfile.write(file)
                 outfile.close()
             else:
-                blocksize = 8*1024
+                blocksize = 8 * 1024
                 outfile = open(path, 'wb')
                 data = file.read(blocksize)
                 while data:
@@ -455,16 +455,16 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
             # First check for a UNIX full path. There will be no UNIX path
             # separators in a Windows path.
             if '/' in filename:
-                id = filename[filename.rfind('/')+1:]
+                id = filename[filename.rfind('/') + 1:]
             # Next check for Window separators. If there are no UNIX path
             # separators then it's probably a Windows path and not a random
             # relative UNIX path which happens to have backslashes in it.
             # Lets hope this never happens, anyway. ;)
             elif '\\' in filename:
-                id = filename[filename.rfind('\\')+1:]
+                id = filename[filename.rfind('\\') + 1:]
             # Not sure if we'll ever get a Mac path, but here goes...
             elif ':' in filename:
-                id = filename[filename.rfind(':')+1:]
+                id = filename[filename.rfind(':') + 1:]
             # Else we have a filename with no path components so let's use
             # that for the id.
             else:
@@ -497,7 +497,7 @@ class LocalDirectory(OFS.CopySupport.CopyContainer, App.Management.Navigation,
         if user is None or \
            not user.has_permission('Overwrite local files', self):
             raise Unauthorized(
-                    'Sorry, you are not authorized to overwrite files.')
+                'Sorry, you are not authorized to overwrite files.')
         self._write_file(file, path)
 
     def manage_renameObject(self, id, new_id, REQUEST=None):
@@ -1054,7 +1054,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
              'manage_renameForm', 'manage_renameObject',
              'manage_createDirectory')),
         ('Delete local files', ('manage_delObjects',)),
-        )
+    )
 
     _properties = (
         {'id': 'title', 'type': 'string', 'mode': 'w'},
@@ -1064,7 +1064,7 @@ class LocalFS(LocalDirectory, OFS.PropertyManager.PropertyManager,
         _properties = _properties + (
             {'id': 'username', 'type': 'string', 'mode': 'w'},
             {'id': 'password', 'type': 'string', 'mode': 'w'},
-            )
+        )
     _properties = _properties + (
         {'id': 'default_document', 'type': 'string', 'mode': 'w'},
         {'id': 'type_map', 'type': 'lines', 'mode': 'w'},
