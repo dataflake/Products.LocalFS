@@ -58,4 +58,4 @@ def initialize(context):
         constructors=(LocalFS.manage_addLocalFSForm,
                       LocalFS.manage_addLocalFS),
         icon='www/fs.gif',
-        )
+    )

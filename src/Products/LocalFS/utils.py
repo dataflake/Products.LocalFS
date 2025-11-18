@@ -212,7 +212,7 @@ def _create_builtin_ob(c, id, file, path):
 def _create_ob_from_function(c, id, file, path):
     try:
         i = c.rindex('.')
-        m, c = c[:i], c[i+1:]
+        m, c = c[:i], c[i + 1:]
         m = __import__(m, globals(), locals(), (c,))
         c = getattr(m, c)
         f = getattr(c, 'createSelf').__func__
@@ -225,7 +225,7 @@ def _create_ob_from_function(c, id, file, path):
 def _create_ob_from_factory(c, id, file, path):
     try:
         i = c.rindex('.')
-        m, c = c[:i], c[i+1:]
+        m, c = c[:i], c[i + 1:]
         c = getObject(m, c)
         f = c()
         ob = _wrap_ob(f(id, file), path)

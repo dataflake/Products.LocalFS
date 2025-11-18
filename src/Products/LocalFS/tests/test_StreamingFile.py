@@ -50,7 +50,7 @@ class StreamingFileTests(unittest.TestCase):
     def setUp(self):
         self.tempfile = tempfile.NamedTemporaryFile(dir=LOCALFS_ROOT,
                                                     delete=True)
-        self.tempfile.write(b'.'*40000)
+        self.tempfile.write(b'.' * 40000)
 
     def tearDown(self):
         self.tempfile.close()
@@ -89,7 +89,7 @@ class StreamingFileTests(unittest.TestCase):
         self.assertEqual(bytes(stream_data), data)
 
         # Read a single byte
-        self.assertEqual(stream_data[BUFFER_SIZE-1], b'.')
+        self.assertEqual(stream_data[BUFFER_SIZE - 1], b'.')
 
         # Try to read beyond chunk size
-        self.assertEqual(stream_data[BUFFER_SIZE+1], b'')
+        self.assertEqual(stream_data[BUFFER_SIZE + 1], b'')
