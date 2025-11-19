@@ -1,13 +1,15 @@
 Change log
 ==========
 
-3.2 (unreleased)
+4.0 (2025-11-19)
 ----------------
 
+- Convert to PEP 420-style namespace package.
 
 - Add support for Python 3.13, 3.14.
 
 - Drop support for Python 3.7, 3.8, 3.9.
+
 
 3.1 (2024-01-03)
 ----------------
