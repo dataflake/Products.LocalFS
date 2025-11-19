@@ -8,6 +8,57 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "Products.LocalFS"
+version = "4.1"
+description = "The Local File System product"
+keywords = ["zope"]
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.txt"]
+authors = [
+  { name = "Jonothan Farr and contributors", email = "jfarr@speakeasy.org" },
+]
+maintainers = [
+  { name = "Jens Vagelpohl and contributors", email = "jens@dataflake.org" },
+]
+
+classifiers = [
+  "Development Status :: 6 - Mature",
+  "Environment :: Web Environment",
+  "Framework :: Zope",
+  "Framework :: Zope :: 5",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Internet :: WWW/HTTP :: Site Management",
+]
+dependencies = [
+  "Zope >= 5",
+  "Products.PythonScripts",
+]
+
+[project.optional-dependencies]
+docs = [
+  "Sphinx",
+  "furo",
+]
+exportimport = ["Products.GenericSetup"]
+
+[project.urls]
+Documentation = "https://productslocalfs.readthedocs.io"
+Issues = "https://github.com/dataflake/Products.LocalFS/issues"
+Source = "https://github.com/dataflake/Products.LocalFS"
+Changelog = "https://productslocalfs.readthedocs.io/en/latest/changes.html"
+
 [tool.coverage.run]
 branch = true
 source = ["Products.LocalFS"]

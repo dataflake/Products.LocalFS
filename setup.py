@@ -11,60 +11,7 @@
 #
 ##############################################################################
 
-import os
-
 from setuptools import setup
 
 
-here = os.path.abspath(os.path.dirname(__file__))
-_boundary = '\n' + ('-' * 60) + '\n\n'
-
-
-def _read(name):
-    with open(os.path.join(here, name)) as fp:
-        return fp.read()
-
-
-setup(name='Products.LocalFS',
-      version='4.1.dev0',
-      license='BSD License',
-      description='The Local File System product',
-      long_description=_read('README.rst'),
-      classifiers=[
-          'Development Status :: 6 - Mature',
-          'Environment :: Web Environment',
-          'Framework :: Zope',
-          'Framework :: Zope :: 5',
-          'Intended Audience :: Developers',
-          'License :: OSI Approved :: BSD License',
-          'Operating System :: OS Independent',
-          'Programming Language :: Python',
-          'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.10',
-          'Programming Language :: Python :: 3.11',
-          'Programming Language :: Python :: 3.12',
-          'Programming Language :: Python :: 3.13',
-          'Programming Language :: Python :: 3.14',
-          'Topic :: Internet :: WWW/HTTP :: Site Management',
-      ],
-      keywords='web application server zope',
-      author='Jonothan Farr and contributors',
-      author_email='jfarr@speakeasy.org',
-      maintainer='Jens Vagelpohl',
-      maintainer_email='jens@dataflake.org',
-      url='https://github.com/dataflake/Products.LocalFS',
-      project_urls={
-          'Documentation': 'https://productslocalfs.readthedocs.io/',
-          'Issue Tracker': ('https://github.com/dataflake/'
-                            'Products.LocalFS/issues'),
-          'Sources': 'https://github.com/dataflake/Products.LocalFS',
-      },
-      python_requires='>=3.10',
-      install_requires=[
-          'Zope',
-          'Products.PythonScripts',
-      ],
-      extras_require={
-          'docs': ['Sphinx', 'furo'],
-      },
-      )
+setup()
