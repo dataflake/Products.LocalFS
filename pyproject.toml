@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Products.LocalFS"
-version = "4.1"
+version = "4.2.dev0"
 description = "The Local File System product"
 keywords = ["zope"]
 readme = "README.rst"
